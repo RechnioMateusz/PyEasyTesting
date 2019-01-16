@@ -6,13 +6,14 @@ def save_project(project_name, tests_paths):
     project['name'] = project_name
     project['tests'] = list()
     for test_name, test_path in tests_paths.items():
-        # test_name = test_name.split('-')[-1]
+        test_name = test_name.split('-')[-1]
         project['tests'].append(
             {
                 'file': test_name,
                 'path': test_path,
             }
         )
+    project['history'] = list()
     file_name = '{:s}.json'.format(project_name)
     with open(file_name, 'w') as project_file:
         json.dump(project, project_file)

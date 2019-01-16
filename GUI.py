@@ -5,7 +5,6 @@ TODO:
     * zarzadzanie datami
     * testowanie
     * zarzadanie folderami
-    * plik konfiguracyjny
 '''
 
 import unittest
@@ -301,7 +300,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         else:
             m = 'Scan completed.'
             m += '\nFound {:n} proper test files.'.format(tests_counter)
-            m += '\nFound {:n} \'Python\' files without tests.'.format(
+            m += '\nFound {:n} \"Python\" files without tests.'.format(
                 none_tests_counter
             )
             m += '\nFound {:n} files, that failed to load.'.format(
@@ -346,9 +345,24 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         last_folder = files_creator.get_file_from_path(path=self.directory)
         register = dict()
         self.__get_only_tests(parent=last_folder, register=register)
-        files_creator.save_project(
-            project_name=last_folder, tests_paths=register
-        )
+        try:
+            files_creator.save_project(
+                project_name=last_folder, tests_paths=register
+            )
+        except Exception as ex:
+            messagebox.showerror(
+                'ERROR',
+                'Unexpected error has occured while saving.\n{:s}'.format(
+                    str(ex)
+                )
+            )
+        else:
+            messagebox.showinfo(
+                'SUCCESS',
+                'Project succesfully saved as \"{:s}.json\".'.format(
+                    last_folder
+                )
+            )
 
     def hide_frame(self):
         self.__update = False
