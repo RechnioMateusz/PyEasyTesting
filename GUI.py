@@ -11,20 +11,20 @@ import unittest
 import threading
 import os
 
+import logging
+import logging.config
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 from tkinter import filedialog
 
 import my_widgets
-import linker
-import test_detector
-import files_creator
+import logic
 
 
 def loading_cursor(method):
     def wrapper(master, *args, **kwargs):
-        master.configure(cursor='clock')
+        master.configure(cursor='wait')
         master.update()
         ret = method(master, *args, **kwargs)
         master.configure(cursor='arrow')
@@ -33,8 +33,11 @@ def loading_cursor(method):
 
 
 class Frame_Program_Title(my_widgets.My_Frame):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logic, logger, *args, **kwargs):
         my_widgets.My_Frame.__init__(self, *args, **kwargs)
+        self.logger = logger
+        self.logic = logic
+        self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
     def _set_parameters(self):
         self.columnconfigure(0, weight=1)
@@ -51,10 +54,13 @@ class Frame_Program_Title(my_widgets.My_Frame):
 
 
 class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logic, logger, *args, **kwargs):
         my_widgets.My_Label_Frame_Independent.__init__(
             self, *args, text='Main Menu'
         )
+        self.logger = logger
+        self.logic = logic
+        self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
     def _set_parameters(self):
         self.columnconfigure(0, weight=1)
@@ -79,8 +85,11 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
 
 
 class Empty_Frame(my_widgets.My_Frame):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logic, logger, *args, **kwargs):
         my_widgets.My_Frame.__init__(self, *args, **kwargs)
+        self.logger = logger
+        self.logic = logic
+        self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
     def _set_parameters(self):
         pass
@@ -96,13 +105,13 @@ class Empty_Frame(my_widgets.My_Frame):
 
 
 class Frame_Loading(my_widgets.My_Label_Frame_Independent):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logic, logger, *args, **kwargs):
         my_widgets.My_Label_Frame_Independent.__init__(
             self, *args, text='LOADING'
         )
-        self.directory = None
-        self.files_register = dict()
-        self.test_detector = test_detector.Test_Detector()
+        self.logger = logger
+        self.logic = logic
+        self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
         self.__update = False
         self.__update_frame()
@@ -220,7 +229,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         self.info6.grid(row=0, column=5, sticky=tk.NSEW)
 
     def __update_frame(self):
-        if(self.directory is None):
+        if(self.logic.loading_directory is None):
             self.button_scan_for_tests.configure(state=tk.DISABLED)
             self.button_save.configure(state=tk.DISABLED)
         else:
@@ -230,31 +239,37 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             self.after(40, self.__update_frame)
 
     def __find_directory(self):
-        self.directory = filedialog.askdirectory()
-        if(self.directory == ''):
-            self.directory = None
+        self.logic.loading_directory = filedialog.askdirectory()
+        if(self.logic.loading_directory == ''):
+            self.logic.loading_directory = None
         else:
             self.label_directory.configure(
-                text='Directory:\n{:s}'.format(self.directory)
+                text='Directory:\n{:s}'.format(self.logic.loading_directory)
             )
+            self.logger.info('Starting recursive search in {:s}'.format(
+                self.logic.loading_directory
+            ))
             self.__start_filling_process()
 
     @loading_cursor
     def __start_filling_process(self):
-        last_folder = files_creator.get_file_from_path(path=self.directory)
+        last_folder = self.logic.files_creator.get_file_from_path(
+            path=self.logic.loading_directory
+        )
         self.tree_files.insert(
             parent='', index=tk.END, iid=last_folder,
             text=last_folder, values=('', ), tags=(last_folder, )
         )
-        self.files_register[last_folder] = self.directory
-        self.__fill_tree(path=self.directory, root=last_folder)
+        self.logic.loading_files_register[last_folder] = \
+            self.logic.loading_directory
+        self.__fill_tree(path=self.logic.loading_directory, root=last_folder)
 
     def __fill_tree(self, path, root):
         files = os.listdir(path)
         for _file in files:
             new_path = os.path.join(path, _file)
             new_root = root + '-' + _file
-            self.files_register[new_root] = new_path
+            self.logic.loading_files_register[new_root] = new_path
             if(os.path.isfile(new_path)):
                 self.tree_files.insert(
                     parent=root, index=tk.END, iid=new_root,
@@ -273,8 +288,8 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         none_tests_counter = 0
         failed_tests_counter = 0
         other_counter = 0
-        for key, file_path in self.files_register.items():
-            result = self.test_detector.is_test_file(module_path=file_path)
+        for key, file_path in self.logic.loading_files_register.items():
+            result = self.logic.detector.is_test_file(module_path=file_path)
             if(result is True):
                 self.tree_files.tag_configure(
                     tagname=key, background='#005500'
@@ -309,6 +324,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             m += '\nFound {:n} other files and directories.'.format(
                 other_counter
             )
+            self.logger.info(m)
             messagebox.showinfo('SUCCES', m)
 
     def __on_lmb_click(self, event):
@@ -316,7 +332,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         item_children = self.tree_files.get_children(item=item)
         if(
             len(item_children) == 0 and
-            self.test_detector.is_python_module(module_name=item)
+            self.logic.detector.is_python_module(module_name=item)
            ):
             is_test = self.tree_files.item(item)['values'][0]
             if(is_test == 'True'):
@@ -337,17 +353,20 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             if(len(grand_children) == 0):
                 is_test = self.tree_files.item(child)['values'][0]
                 if(is_test == 'True'):
-                    register[child] = self.files_register[child]
+                    register[child] = self.logic.loading_files_register[child]
             else:
                 self.__get_only_tests(parent=child, register=register)
 
     def __save_project(self):
-        last_folder = files_creator.get_file_from_path(path=self.directory)
+        last_folder = self.logic.files_creator.get_file_from_path(
+            path=self.logic.loading_directory
+        )
         register = dict()
         self.__get_only_tests(parent=last_folder, register=register)
         try:
-            files_creator.save_project(
-                project_name=last_folder, tests_paths=register
+            self.logic.files_creator.save_project(
+                project_name=last_folder, tests_paths=register,
+                folder=self.logic.settings.projects_folder
             )
         except Exception as ex:
             messagebox.showerror(
@@ -357,12 +376,11 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
                 )
             )
         else:
-            messagebox.showinfo(
-                'SUCCESS',
-                'Project succesfully saved as \"{:s}.json\".'.format(
+            m = 'Project succesfully saved as \"{:s}.json\".'.format(
                     last_folder
                 )
-            )
+            self.logger.info(m)
+            messagebox.showinfo('SUCCESS', m)
 
     def hide_frame(self):
         self.__update = False
@@ -373,10 +391,13 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
 
 
 class Frame_Testing(my_widgets.My_Label_Frame_Independent):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, logic, logger, *args, **kwargs):
         my_widgets.My_Label_Frame_Independent.__init__(
             self, *args, text='TESTING'
         )
+        self.logger = logger
+        self.logic = logic
+        self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
     def _set_parameters(self):
         self.rowconfigure(0, weight=1)
@@ -399,17 +420,27 @@ class PyEasyTesting_Window(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
 
+        self.logic = logic.Logic()
+        logging.config.fileConfig(self.logic.settings._logging)
+        self.logger = logging.getLogger('GUI')
+
         self.__frames = {
-            'EMPTY': Empty_Frame(),
-            'LOADING': Frame_Loading(),
-            'TESTING': Frame_Testing(),
+            'EMPTY': Empty_Frame(logic=self.logic, logger=self.logger),
+            'LOADING': Frame_Loading(logic=self.logic, logger=self.logger),
+            'TESTING': Frame_Testing(logic=self.logic, logger=self.logger),
         }
 
+        self.logger.info('Setting main window parameters...')
         self._set_parameters()
+        self.logger.info('Creating static frames...')
         self.__create_static_frames()
+        self.logger.info('Programming buttons...')
         self.__program_buttons()
+        self.logger.info('Adding events...')
         self.__add_events()
+        self.logger.info('Setting active frame...')
         self.__frame_changer()
+        self.logger.info('Starting main window...')
         self.mainloop()
 
     def _set_parameters(self):
@@ -420,10 +451,14 @@ class PyEasyTesting_Window(tk.Tk):
         self.columnconfigure(1, weight=5)
 
     def __create_static_frames(self):
-        self.frame_title = Frame_Program_Title()
+        self.frame_title = Frame_Program_Title(
+            logic=self.logic, logger=self.logger
+        )
         self.frame_title.grid(row=0, column=0, columnspan=2, sticky=tk.NSEW)
 
-        self.frame_main_menu = Frame_Main_Menu()
+        self.frame_main_menu = Frame_Main_Menu(
+            logic=self.logic, logger=self.logger
+        )
         self.frame_main_menu.grid(row=1, column=0, sticky=tk.NSEW)
 
         self.__frames['EMPTY'].active = True
@@ -459,6 +494,7 @@ class PyEasyTesting_Window(tk.Tk):
     def _on_exit(self):
         result = messagebox.askyesno('EXIT', 'Are You sure?')
         if(result is True):
+            self.logger.info('Exiting program...')
             # Save protocol
             self.quit()
             self.destroy()

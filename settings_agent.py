@@ -4,41 +4,79 @@ import os
 import configparser
 
 
-_settings = 'settings.ini'
+class Settings():
+    def __init__(self):
+        self.main_path = sys.path[0]
+        self._settings = os.path.join(self.main_path, 'settings.ini')
+        self._logging = os.path.join(self.main_path, '_logging.ini')
 
-# Configuration file loading
-__config_parser = configparser.ConfigParser()
-__config_parser.read(filenames=_settings)
+        # Configuration file loading
+        self.__config_parser = configparser.ConfigParser()
+        self.__config_parser.read(filenames=self._settings)
 
-# Current date loading
-current_date = datetime.datetime.now()
-current_year = current_date.year
-current_month = current_date.month
-current_day = current_date.day
+        # Current date loading
+        self.current_date_object = datetime.datetime.now()
+        self.current_year = self.current_date_object.year
+        self.current_month = self.current_date_object.month
+        self.current_day = self.current_date_object.day
+        self.current_date = self.current_date_object.strftime(
+            '%H:%M:%S-%d/%m/%Y'
+        )
 
-# System detecting
-current_platform = sys.platform
-current_platform_prefix = current_platform[:3]
+        # System detecting
+        self.current_platform = sys.platform
+        self.current_platform_prefix = self.current_platform[:3]
 
-# Paths loading
-projects_folder = __config_parser.get('PATHS', 'projects')
-logs_folder = __config_parser.get('PATHS', 'logs')
+        # Paths loading
+        self.projects_folder = self.__config_parser.get('PATHS', 'projects')
+        self.logs_folder = self.__config_parser.get('PATHS', 'logs')
 
-# Date update
-if(
-    current_year != __config_parser.get('DATE', 'year') or
-    current_month != __config_parser.get('DATE', 'month') or
-    current_day != __config_parser.get('DATE', 'day')
-   ):
-    __config_parser.set('DATE', 'year', str(current_year))
-    __config_parser.set('DATE', 'month', str(current_month))
-    __config_parser.set('DATE', 'day', str(current_day))
+        # Date update
+        if(
+            self.current_year != self.__config_parser.get('DATE', 'year') or
+            self.current_month != self.__config_parser.get('DATE', 'month') or
+            self.current_day != self.__config_parser.get('DATE', 'day')
+        ):
+            self.__config_parser.set('DATE', 'year', str(self.current_year))
+            self.__config_parser.set('DATE', 'month', str(self.current_month))
+            self.__config_parser.set('DATE', 'day', str(self.current_day))
 
-# System platform update
-if(__config_parser.get('SYSTEM', 'platform') != current_platform):
-    __config_parser.set('SYSTEM', 'platform', current_platform)
+        # System platform update
+        if(
+            self.__config_parser.get('SYSTEM', 'platform') !=
+                self.current_platform
+           ):
+            self.__config_parser.set(
+                'SYSTEM', 'platform', self.current_platform
+            )
 
-# Save changes
-with open(_settings, 'w') as settings_file:
-    __config_parser.write(settings_file)
-__config_parser.clear()
+        # Save changes
+        with open(self._settings, 'w') as settings_file:
+            self.__config_parser.write(settings_file)
+
+    def set_logger(self, logger):
+        self.logger = logger
+
+    def update_logging_settings(self):
+        logging_date = self.current_date_object.strftime('%d_%m_%Y')
+        path = os.path.join(self.main_path, self.logs_folder, logging_date)
+        logging_config_parser = configparser.ConfigParser()
+        logging_config_parser.read(filenames=self._logging)
+        new_args = '(\'{:s}.log\', \'a\')'.format(path)
+        new_args = new_args.replace(chr(92), '/')
+        logging_config_parser.set('handler_file_stream', 'args', new_args)
+        with open(self._logging, 'w') as logging_file:
+            logging_config_parser.write(logging_file)
+        logging_config_parser.clear()
+
+    def log_initialization_info(self):
+        self.logger.info('Initialization of settings agent')
+        self.logger.info('Main path: {:s}'.format(self.main_path))
+        self.logger.info('Settings path: {:s}'.format(self._settings))
+        self.logger.info('Logging settings path: {:s}'.format(self._logging))
+        self.logger.info('Current date: {:s}'.format(self.current_date))
+        self.logger.info('Current platform: {:s}'.format(
+            self.current_platform
+        ))
+        self.logger.info('Projects folder: {:s}'.format(self.projects_folder))
+        self.logger.info('Logs folder: {:s}'.format(self.logs_folder))

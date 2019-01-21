@@ -2,8 +2,8 @@ import importlib.util
 
 
 class Test_Detector():
-    def __init__(self):
-        pass
+    def __init__(self, logger):
+        self.logger = logger
 
     def __load_module(self, module_path):
         module_name = module_path.split('/')[-1]
@@ -39,13 +39,3 @@ class Test_Detector():
 
     def is_test_method(self):
         pass
-
-
-if(__name__ == '__main__'):
-    import os
-    test_detector = Test_Detector()
-    path1 = r'C:\Users\mateu\Desktop\Projekty'
-    path2 = r'Python\Projekty\Test\tests\tempTest2.py'
-    path = os.path.join(path1, path2)
-    result = test_detector.is_test_file(module_path=path)
-    print(result)
