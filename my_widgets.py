@@ -217,6 +217,22 @@ class My_Scrollbar(tk.Scrollbar):
                 self[key] = value
 
 
+class My_Combobox(ttk.Combobox):
+    def __init__(self, *args, **kwargs):
+        ttk.Combobox.__init__(self, *args, **kwargs)
+
+        style = ttk.Style(master=self)
+        style.theme_use(themename='clam')
+        style.configure(
+            style='TCombobox', background='#FF8000', foreground='#222222'
+        )
+        self.configure(state='readonly')
+
+        for key, value in kwargs.items():
+            if(key != 'master'):
+                self[key] = value
+
+
 if(__name__ == '__main__'):
     root = tk.Tk()
     root.rowconfigure(0, weight=1)
@@ -230,8 +246,11 @@ if(__name__ == '__main__'):
     label_frame = My_Label_Frame(master=root, text='New Label')
     label_frame.grid(row=0, column=1, sticky='ENWS')
 
-    button = My_Button(master=root, text='Click Me')
-    button.grid(row=0, column=0)
+    # button = My_Button(master=root, text='Click Me')
+    # button.grid(row=0, column=0)
+    combobox = My_Combobox(master=root)
+    combobox['values'] = tuple(range(10))
+    combobox.grid(row=0, column=0)
 
     text = My_Text(master=root)
     text.grid(row=1, column=0)

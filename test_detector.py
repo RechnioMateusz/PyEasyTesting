@@ -4,6 +4,7 @@ import importlib.util
 class Test_Detector():
     def __init__(self, logger):
         self.logger = logger
+        self.logger.info('Initialization of test detector class...')
 
     def __load_module(self, module_path):
         module_name = module_path.split('/')[-1]

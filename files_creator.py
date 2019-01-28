@@ -6,6 +6,8 @@ class Files_Creator():
     def __init__(self, main_path, directories):
         self.main_path = main_path
         self._create_directories(directories=directories)
+        self.logger = None
+        self.__dirs_creation_info = str()
 
     def save_project(self, project_name, tests_paths, folder):
         project = dict()
@@ -39,8 +41,16 @@ class Files_Creator():
             path = os.path.join(self.main_path, directory)
             try:
                 os.mkdir(path)
-            except:
-                pass
+            except Exception as ex:
+                self.__dirs_creation_info = \
+                    'Cannot create directory {:s} with error: {:s}'.format(
+                        path, str(ex)
+                    )
+
+    def get_existing_projects(self, projects_folder):
+        path = os.path.join(self.main_path, projects_folder)
+        projects_names = os.listdir(path)
+        return projects_names
 
     def set_logger(self, logger):
         self.logger = logger
@@ -56,3 +66,4 @@ class Files_Creator():
             directories_str += '{:s}, '.format(directory)
         directories_str = directories_str[:-2]
         self.logger.info('Creating folders: {:s}'.format(directories_str))
+        self.logger.info(self.__dirs_creation_info)

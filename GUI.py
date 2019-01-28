@@ -1,12 +1,3 @@
-'''
-TODO:
-
-    * logowanie
-    * zarzadzanie datami
-    * testowanie
-    * zarzadanie folderami
-'''
-
 import unittest
 import threading
 import os
@@ -395,25 +386,104 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         my_widgets.My_Label_Frame_Independent.__init__(
             self, *args, text='TESTING'
         )
-        self.logger = logger
         self.logic = logic
+        self.logger = logger
+        self.__update = False
         self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
+
+    def __listen_to_checkbuttons(self):
+        if(self.multithreading_var.get() is True):
+            self.checkbutton_multithreading_testing.check()
+        else:
+            self.checkbutton_multithreading_testing.uncheck()
+
+        if(self.__update):
+            self.after(50, self.__listen_to_checkbuttons)
 
     def _set_parameters(self):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=0)
 
     def _create_widgets(self):
-        self.btn = my_widgets.My_Button(
-            master=self, text='TESTTING'
+        self.tree_frame = my_widgets.My_Little_Frame(master=self)
+        self.tree_frame.rowconfigure(0, weight=1)
+        self.tree_frame.rowconfigure(1, weight=0)
+        self.tree_frame.columnconfigure(0, weight=1)
+        self.tree_frame.columnconfigure(1, weight=0)
+        self.tree_frame.grid(
+            row=0, column=0, sticky=tk.NSEW, padx=(10, 5), pady=10
         )
-        self.btn.grid(row=0, column=0)
+        self.tree_files = my_widgets.My_Treeview(
+            master=self.tree_frame,  # columns=('Directory', 'Test', 'ID'),
+            selectmode='extended'
+        )
+        # self.tree_files.bind('<<TreeviewSelect>>', self.__on_lmb_click)
+        # self.tree_files.heading('#0', text='Directory', anchor=tk.CENTER)
+        # self.tree_files.heading('#1', text='Test', anchor=tk.CENTER)
+        # self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
+        # self.tree_files.column('#1', stretch=tk.YES, minwidth=50)
+        self.tree_files.grid(row=0, column=0, sticky=tk.NSEW)
+
+        self.scrollbar_vert = my_widgets.My_Scrollbar(
+            master=self.tree_frame, command=self.tree_files.yview,
+            orient=tk.VERTICAL, cursor='sb_v_double_arrow'
+        )
+        self.scrollbar_vert.grid(row=0, column=1, sticky=tk.NS)
+
+        self.scrollbar_hor = my_widgets.My_Scrollbar(
+            master=self.tree_frame, command=self.tree_files.xview,
+            orient=tk.HORIZONTAL, cursor='sb_h_double_arrow'
+        )
+        self.scrollbar_hor.grid(row=1, column=0, sticky=tk.EW)
+
+        self.tree_files.configure(yscrollcommand=self.scrollbar_vert.set)
+        self.tree_files.configure(xscrollcommand=self.scrollbar_hor.set)
+
+        self.buttons_frame = my_widgets.My_Little_Frame(master=self)
+        self.buttons_frame.rowconfigure(0, weight=0)
+        self.buttons_frame.rowconfigure(1, weight=0)
+        self.buttons_frame.rowconfigure(2, weight=0)
+        self.buttons_frame.columnconfigure(0, weight=1)
+        self.buttons_frame.grid(row=0, column=1, sticky=tk.NSEW)
+
+        self.combobox_projects = my_widgets.My_Combobox(
+            master=self.buttons_frame
+        )
+        self.combobox_projects.bind(
+            '<<ComboboxSelected>>', lambda e: print("Selected!")
+        )
+        self.combobox_projects.grid(
+            row=0, column=0, sticky=tk.EW, padx=10, pady=(10, 5)
+        )
+
+        self.button_start_test = my_widgets.My_Button(
+            master=self.buttons_frame, text='Start tests'
+        )
+        self.button_start_test.grid(
+            row=1, column=0, sticky=tk.NSEW, padx=(5, 10), pady=5
+        )
+
+        self.multithreading_var = tk.BooleanVar(master=self)
+        self.checkbutton_multithreading_testing = my_widgets.My_Checkbutton(
+            master=self.buttons_frame, text='Multithreading tests',
+            variable=self.multithreading_var
+        )
+        self.checkbutton_multithreading_testing.grid(
+            row=2, column=0, sticky=tk.NSEW, padx=(5, 10), pady=(5, 10)
+        )
 
     def hide_frame(self):
-        pass
+        self.__update = False
 
     def show_frame(self):
-        pass
+        self.combobox_projects.configure(
+            values=self.logic.files_creator.get_existing_projects(
+                projects_folder=self.logic.settings.projects_folder
+            )
+        )
+        self.__update = True
+        self.__listen_to_checkbuttons()
 
 
 class PyEasyTesting_Window(tk.Tk):
@@ -494,7 +564,7 @@ class PyEasyTesting_Window(tk.Tk):
     def _on_exit(self):
         result = messagebox.askyesno('EXIT', 'Are You sure?')
         if(result is True):
-            self.logger.info('Exiting program...')
+            self.logger.info('Exiting program...\n\n')
             # Save protocol
             self.quit()
             self.destroy()
