@@ -242,8 +242,13 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             ))
             self.__start_filling_process()
 
+    def __clear_tree(self):
+        self.tree_files.delete(*self.tree_files.get_children())
+
     @loading_cursor
     def __start_filling_process(self):
+        self.__clear_tree()
+
         last_folder = self.logic.files_creator.get_file_from_path(
             path=self.logic.loading_directory
         )
@@ -409,52 +414,59 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.tree_frame = my_widgets.My_Little_Frame(master=self)
         self.tree_frame.rowconfigure(0, weight=1)
         self.tree_frame.rowconfigure(1, weight=0)
-        self.tree_frame.columnconfigure(0, weight=1)
-        self.tree_frame.columnconfigure(1, weight=0)
+        self.tree_frame.columnconfigure(0, weight=0)
+        self.tree_frame.columnconfigure(1, weight=1)
+        self.tree_frame.columnconfigure(2, weight=0)
         self.tree_frame.grid(
             row=0, column=0, sticky=tk.NSEW, padx=(10, 5), pady=10
         )
         self.tree_files = my_widgets.My_Treeview(
-            master=self.tree_frame,  # columns=('Directory', 'Test', 'ID'),
+            master=self.tree_frame, columns=('Test', 'ToDo', 'ID'),
             selectmode='extended'
         )
         # self.tree_files.bind('<<TreeviewSelect>>', self.__on_lmb_click)
-        # self.tree_files.heading('#0', text='Directory', anchor=tk.CENTER)
-        # self.tree_files.heading('#1', text='Test', anchor=tk.CENTER)
-        # self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
-        # self.tree_files.column('#1', stretch=tk.YES, minwidth=50)
-        self.tree_files.grid(row=0, column=0, sticky=tk.NSEW)
+        self.tree_files.heading('#0', text='Test', anchor=tk.CENTER)
+        self.tree_files.heading('#1', text='ToDo', anchor=tk.CENTER)
+        self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
+        self.tree_files.column('#1', stretch=tk.YES, minwidth=50)
+        self.tree_files.grid(row=0, column=1, sticky=tk.NSEW)
 
         self.scrollbar_vert = my_widgets.My_Scrollbar(
             master=self.tree_frame, command=self.tree_files.yview,
             orient=tk.VERTICAL, cursor='sb_v_double_arrow'
         )
-        self.scrollbar_vert.grid(row=0, column=1, sticky=tk.NS)
+        self.scrollbar_vert.grid(row=0, column=2, sticky=tk.NS, pady=1)
 
         self.scrollbar_hor = my_widgets.My_Scrollbar(
             master=self.tree_frame, command=self.tree_files.xview,
             orient=tk.HORIZONTAL, cursor='sb_h_double_arrow'
         )
-        self.scrollbar_hor.grid(row=1, column=0, sticky=tk.EW)
+        self.scrollbar_hor.grid(row=1, column=1, sticky=tk.EW, padx=1)
 
         self.tree_files.configure(yscrollcommand=self.scrollbar_vert.set)
         self.tree_files.configure(xscrollcommand=self.scrollbar_hor.set)
+
+        self.progressbar = my_widgets.My_Progressbar(master=self.tree_frame)
+        self.progressbar.grid(
+            row=0, column=0, rowspan=2, sticky=tk.NS, padx=(0, 10)
+        )
 
         self.buttons_frame = my_widgets.My_Little_Frame(master=self)
         self.buttons_frame.rowconfigure(0, weight=0)
         self.buttons_frame.rowconfigure(1, weight=0)
         self.buttons_frame.rowconfigure(2, weight=0)
+        self.buttons_frame.rowconfigure(3, weight=0)
+        self.buttons_frame.rowconfigure(4, weight=0)
         self.buttons_frame.columnconfigure(0, weight=1)
         self.buttons_frame.grid(row=0, column=1, sticky=tk.NSEW)
 
-        self.combobox_projects = my_widgets.My_Combobox(
-            master=self.buttons_frame
+        self.multithreading_var = tk.BooleanVar(master=self)
+        self.checkbutton_multithreading_testing = my_widgets.My_Checkbutton(
+            master=self.buttons_frame, text='Multithreading tests',
+            variable=self.multithreading_var
         )
-        self.combobox_projects.bind(
-            '<<ComboboxSelected>>', lambda e: print("Selected!")
-        )
-        self.combobox_projects.grid(
-            row=0, column=0, sticky=tk.EW, padx=10, pady=(10, 5)
+        self.checkbutton_multithreading_testing.grid(
+            row=0, column=0, sticky=tk.NSEW, padx=(5, 10), pady=(5, 10)
         )
 
         self.button_start_test = my_widgets.My_Button(
@@ -464,14 +476,30 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             row=1, column=0, sticky=tk.NSEW, padx=(5, 10), pady=5
         )
 
-        self.multithreading_var = tk.BooleanVar(master=self)
-        self.checkbutton_multithreading_testing = my_widgets.My_Checkbutton(
-            master=self.buttons_frame, text='Multithreading tests',
-            variable=self.multithreading_var
+        self.separator = my_widgets.My_Separator(master=self.buttons_frame)
+        self.separator.grid(row=2, column=0, sticky=tk.NSEW)
+
+        self.label_projects_selector = my_widgets.My_Label(
+            master=self.buttons_frame, text='Choose project'
         )
-        self.checkbutton_multithreading_testing.grid(
-            row=2, column=0, sticky=tk.NSEW, padx=(5, 10), pady=(5, 10)
+        self.label_projects_selector.grid(row=3, column=0, sticky=tk.NSEW)
+
+        self.combobox_projects = my_widgets.My_Combobox(
+            master=self.buttons_frame
         )
+        self.combobox_projects.bind(
+            '<<ComboboxSelected>>', self.__on_combobox_selected
+        )
+        self.combobox_projects.grid(
+            row=4, column=0, sticky=tk.EW, padx=10, pady=(10, 5)
+        )
+
+    def __on_combobox_selected(self, event):
+        project = self.logic.files_creator.load_project(
+            folder=self.logic.settings.projects_folder,
+            project_name=self.combobox_projects.get()
+        )
+        print(project)
 
     def hide_frame(self):
         self.__update = False

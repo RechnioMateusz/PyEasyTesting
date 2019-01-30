@@ -199,7 +199,20 @@ class My_Treeview(ttk.Treeview):
 
 
 class My_Progressbar(ttk.Progressbar):
-    pass
+    def __init__(self, *args, **kwargs):
+        ttk.Progressbar.__init__(self, *args, **kwargs)
+
+        style = ttk.Style(master=self)
+        style.theme_use(themename='clam')
+        style.configure(
+            style='Vertical.TProgressbar', background='#FF8000',
+            foreground='#222222', troughcolor='#222222'
+        )
+        self.configure(orient=tk.VERTICAL, mode='determinate')
+
+        for key, value in kwargs.items():
+            if(key != 'master'):
+                self[key] = value
 
 
 class My_Scrollbar(tk.Scrollbar):
@@ -227,6 +240,23 @@ class My_Combobox(ttk.Combobox):
             style='TCombobox', background='#FF8000', foreground='#222222'
         )
         self.configure(state='readonly')
+
+        for key, value in kwargs.items():
+            if(key != 'master'):
+                self[key] = value
+
+
+class My_Separator(ttk.Separator):
+    def __init__(self, *args, **kwargs):
+        ttk.Separator.__init__(self, *args, **kwargs)
+
+        style = ttk.Style(master=self)
+        style.theme_use(themename='clam')
+        style.configure(
+            style='Line.TSeparator', background='#FF8000',
+            troughcolor='#FF8000'
+        )
+        self.configure(orient=tk.HORIZONTAL)
 
         for key, value in kwargs.items():
             if(key != 'master'):

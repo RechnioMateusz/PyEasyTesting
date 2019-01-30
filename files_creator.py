@@ -31,6 +31,13 @@ class Files_Creator():
             'Project \'{:s}\' was succesfully saved'.format(project_name)
         )
 
+    def load_project(self, folder, project_name):
+        path = os.path.join(self.main_path, folder, project_name)
+        project = None
+        with open(path, 'r') as project_file:
+            project = json.load(project_file)
+        return project
+
     def get_file_from_path(self, path):
         last_dir = path.split('/')[-1]
         last_dir = last_dir.split('\\')[-1]
