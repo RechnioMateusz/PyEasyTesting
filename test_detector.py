@@ -1,4 +1,5 @@
 import importlib.util
+import inspect
 
 
 class Test_Detector():
@@ -6,9 +7,13 @@ class Test_Detector():
         self.logger = logger
         self.logger.info('Initialization of test detector class...')
 
-    def __load_module(self, module_path):
+    def get_module_name(self, module_path):
         module_name = module_path.split('/')[-1]
         module_name = module_name.split('\\')[-1]
+        return module_name
+
+    def load_module(self, module_path):
+        module_name = self.get_module_name(module_path=module_path)
         spec = importlib.util.spec_from_file_location(
             module_name, module_path
         )
@@ -24,7 +29,7 @@ class Test_Detector():
     def is_test_file(self, module_path, del_module=True):
         if(self.is_python_module(module_name=module_path)):
             try:
-                _module = self.__load_module(module_path=module_path)
+                _module = self.load_module(module_path=module_path)
             except:
                 return 'FAILED'
             else:
@@ -35,8 +40,32 @@ class Test_Detector():
         else:
             return None
 
-    def is_test_class(self):
-        pass
+    def get_module_classes(self, _module):
+        attributes = dir(_module)
+        classes = list()
+        for attribute in attributes:
+            _object = getattr(attribute, _module.__name__)
+            if(inspect.isclass(_object)):
+                classes.append(_object)
+        return classes
 
-    def is_test_method(self):
-        pass
+    def get_class_methods(self, _class):
+        attributes = dir(_class)
+        methods = list()
+        for attribute in attributes:
+            _object = getattr(attribute, _class.__name__)
+            if(inspect.ismethod(_object) or inspect.isfunction(_object)):
+                methods.append(_object)
+        return methods
+
+    def is_test_class(self, _class):
+        if(_class.__base__.__name__ == 'unittest'):
+            return True
+        else:
+            return False
+
+    def is_test_method(self, _method):
+        if(_method.__name__[:4].lower() == 'test'):
+            return True
+        else:
+            return False

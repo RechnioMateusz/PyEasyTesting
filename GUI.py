@@ -494,12 +494,18 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             row=4, column=0, sticky=tk.EW, padx=10, pady=(10, 5)
         )
 
+    @loading_cursor
     def __on_combobox_selected(self, event):
         project = self.logic.files_creator.load_project(
             folder=self.logic.settings.projects_folder,
             project_name=self.combobox_projects.get()
         )
-        print(project)
+        self.logger.info('Loading project {:s}'.format(project['name']))
+        m = self.logic.detector.load_module(
+            module_path=project['tests'][1]['path']
+        )
+        for attribute in dir(m):
+            pass
 
     def hide_frame(self):
         self.__update = False
