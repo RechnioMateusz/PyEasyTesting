@@ -34,9 +34,23 @@ class Logic():
         )
         self.logger.info('Initialization of logic class')
 
-        # Initialization of further objects
+        # Initialization of test detector
         self.detector = test_detector.Test_Detector(
             logger=logging.getLogger('TDETECTOR')
         )
+
+        # Initialization of logic attributes
         self.loading_directory = None
         self.loading_files_register = dict()
+        self.testing_modules_register = dict()
+        self.testing_classes_register = dict()
+        self.testing_methods_register = dict()
+
+    def clear_loading_logic(self):
+        self.loading_directory = None
+        self.loading_files_register = dict()
+
+    def clear_testing_logic(self):
+        self.testing_methods_register = dict()
+        self.testing_classes_register = dict()
+        self.testing_modules_register = dict()

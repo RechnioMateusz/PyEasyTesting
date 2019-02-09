@@ -44,7 +44,7 @@ class Test_Detector():
         attributes = dir(_module)
         classes = list()
         for attribute in attributes:
-            _object = getattr(attribute, _module.__name__)
+            _object = getattr(_module, attribute)
             if(inspect.isclass(_object)):
                 classes.append(_object)
         return classes
@@ -53,13 +53,13 @@ class Test_Detector():
         attributes = dir(_class)
         methods = list()
         for attribute in attributes:
-            _object = getattr(attribute, _class.__name__)
+            _object = getattr(_class, attribute)
             if(inspect.ismethod(_object) or inspect.isfunction(_object)):
                 methods.append(_object)
         return methods
 
     def is_test_class(self, _class):
-        if(_class.__base__.__name__ == 'unittest'):
+        if(_class.__base__.__name__ == 'TestCase'):
             return True
         else:
             return False
@@ -69,3 +69,15 @@ class Test_Detector():
             return True
         else:
             return False
+
+
+if(__name__ == '__main__'):
+    import tests.tempTest2
+    import logging
+
+    t = Test_Detector(logger=logging.getLogger('test'))
+
+    print(t.is_test_class(_class=tests.tempTest2.TestVector))
+    print(
+        t.is_test_method(_method=tests.tempTest2.TestVector.test_dot_product)
+    )

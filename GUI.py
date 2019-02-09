@@ -1,6 +1,13 @@
+'''
+TODO:
+
+    * Przy ładowaniu projektu dodać jakąś domieszkę soli do tagów
+'''
+
 import unittest
 import threading
 import os
+import sys
 
 import logging
 import logging.config
@@ -156,7 +163,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             master=self.tree_frame, columns=('Directory', 'Test', 'ID'),
             selectmode='extended'
         )
-        self.tree_files.bind('<<TreeviewSelect>>', self.__on_lmb_click)
+        self.tree_files.bind('<Double-Button-1>', self.__on_lmb_double_click)
         self.tree_files.heading('#0', text='Directory', anchor=tk.CENTER)
         self.tree_files.heading('#1', text='Test', anchor=tk.CENTER)
         self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
@@ -200,12 +207,12 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         self.info2.grid(row=0, column=1, sticky=tk.NSEW)
         self.info3 = my_widgets.My_Label(
             master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Test by user', bg='#008800'
+            text='Is test [by user]', bg='#008800'
         )
         self.info3.grid(row=0, column=2, sticky=tk.NSEW)
         self.info4 = my_widgets.My_Label(
             master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Not test by user', bg='#DD0044'
+            text='Is not test [by user]', bg='#DD0044'
         )
         self.info4.grid(row=0, column=3, sticky=tk.NSEW)
         self.info5 = my_widgets.My_Label(
@@ -323,24 +330,29 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             self.logger.info(m)
             messagebox.showinfo('SUCCES', m)
 
-    def __on_lmb_click(self, event):
-        item = self.tree_files.selection()[0]
-        item_children = self.tree_files.get_children(item=item)
-        if(
-            len(item_children) == 0 and
-            self.logic.detector.is_python_module(module_name=item)
-           ):
-            is_test = self.tree_files.item(item)['values'][0]
-            if(is_test == 'True'):
-                self.tree_files.tag_configure(
-                    tagname=item, background='#DD0044'
-                )
-                self.tree_files.item(item=item, values=(False, ))
-            elif(is_test == 'False' or is_test == ''):
-                self.tree_files.tag_configure(
-                    tagname=item, background='#008800'
-                )
-                self.tree_files.item(item=item, values=(True, ))
+    def __on_lmb_double_click(self, event):
+        try:
+            item = self.tree_files.selection()[0]
+            self.tree_files.selection_remove(item)
+        except IndexError as ex:
+            self.logger.debug('Cannot select this item. {:s}'.format(str(ex)))
+        else:
+            item_children = self.tree_files.get_children(item=item)
+            if(
+                len(item_children) == 0 and
+                self.logic.detector.is_python_module(module_name=item)
+            ):
+                is_test = self.tree_files.item(item)['values'][0]
+                if(is_test == 'True'):
+                    self.tree_files.tag_configure(
+                        tagname=item, background='#DD0044'
+                    )
+                    self.tree_files.item(item=item, values=(False, ))
+                elif(is_test == 'False' or is_test == ''):
+                    self.tree_files.tag_configure(
+                        tagname=item, background='#008800'
+                    )
+                    self.tree_files.item(item=item, values=(True, ))
 
     def __get_only_tests(self, parent, register):
         children = self.tree_files.get_children(item=parent)
@@ -380,6 +392,8 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
 
     def hide_frame(self):
         self.__update = False
+        self.__clear_tree()
+        self.logic.clear_loading_logic()
 
     def show_frame(self):
         self.__update = True
@@ -405,6 +419,37 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         if(self.__update):
             self.after(50, self.__listen_to_checkbuttons)
 
+    def __update_parent(self, register):
+        for item in register:
+            children = self.tree_files.get_children(item)
+            counter = 0
+            for child in children:
+                if(self.tree_files.item(child)['values'][0] == 'True'):
+                    counter += 1
+            ignore, _type, result = self.tree_files.item(item)['values']
+            if(counter == len(children)):
+                ignore = True
+                self.tree_files.tag_configure(
+                    tagname=item, foreground='#444444'
+                )
+                self.tree_files.item(
+                    item=item, values=(ignore, _type, result)
+                )
+            else:
+                ignore = False
+                self.tree_files.tag_configure(
+                    tagname=item, foreground='#FF8000'
+                )
+                self.tree_files.item(
+                    item=item, values=(ignore, _type, result)
+                )
+
+    def __listen_to_tree(self):
+        self.__update_parent(register=self.logic.testing_modules_register)
+        self.__update_parent(register=self.logic.testing_classes_register)
+        if(self.__update):
+            self.after(50, self.__listen_to_tree)
+
     def _set_parameters(self):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
@@ -421,14 +466,18 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             row=0, column=0, sticky=tk.NSEW, padx=(10, 5), pady=10
         )
         self.tree_files = my_widgets.My_Treeview(
-            master=self.tree_frame, columns=('Test', 'ToDo', 'ID'),
+            master=self.tree_frame, columns=('Test', 'Ignore', 'Type', 'ID'),
             selectmode='extended'
         )
-        # self.tree_files.bind('<<TreeviewSelect>>', self.__on_lmb_click)
+        self.tree_files.bind('<Double-Button-1>', self.__ignore_handler)
         self.tree_files.heading('#0', text='Test', anchor=tk.CENTER)
-        self.tree_files.heading('#1', text='ToDo', anchor=tk.CENTER)
+        self.tree_files.heading('#1', text='Ignore', anchor=tk.CENTER)
+        self.tree_files.heading('#2', text='Type', anchor=tk.CENTER)
+        self.tree_files.heading('#3', text='Result', anchor=tk.CENTER)
         self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
         self.tree_files.column('#1', stretch=tk.YES, minwidth=50)
+        self.tree_files.column('#2', stretch=tk.YES, minwidth=50)
+        self.tree_files.column('#3', stretch=tk.YES, minwidth=50)
         self.tree_files.grid(row=0, column=1, sticky=tk.NSEW)
 
         self.scrollbar_vert = my_widgets.My_Scrollbar(
@@ -470,7 +519,8 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         )
 
         self.button_start_test = my_widgets.My_Button(
-            master=self.buttons_frame, text='Start tests'
+            master=self.buttons_frame, text='Start tests',
+            command=self.__start_testing
         )
         self.button_start_test.grid(
             row=1, column=0, sticky=tk.NSEW, padx=(5, 10), pady=5
@@ -494,21 +544,120 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             row=4, column=0, sticky=tk.EW, padx=10, pady=(10, 5)
         )
 
+    def __ignore_handler(self, event):
+        try:
+            item = self.tree_files.selection()[0]
+            self.tree_files.selection_remove(item)
+        except IndexError as ex:
+            self.logger.debug('Cannot select this item. {:s}'.format(str(ex)))
+        else:
+            ignore = self.tree_files.item(item)['values'][0]
+            if(ignore == 'True'):
+                ignore = False
+            else:
+                ignore = True
+            self.__ignore_recursively(item=item, ignore=ignore)
+
+    def __ignore_recursively(self, item, ignore):
+        _type, result = self.tree_files.item(item)['values'][1:]
+        if(ignore is False):
+            self.tree_files.tag_configure(tagname=item, foreground='#FF8000')
+            self.tree_files.item(item=item, values=(ignore, _type, result))
+        else:
+            self.tree_files.tag_configure(tagname=item, foreground='#444444')
+            self.tree_files.item(item=item, values=(ignore, _type, result))
+        self.tree_files.item(item=item, values=(ignore, _type, result))
+        grand_items = self.tree_files.get_children(item=item)
+
+        for grand_item in grand_items:
+            self.__ignore_recursively(item=grand_item, ignore=ignore)
+
+    def __clear_tree(self):
+        self.tree_files.delete(*self.tree_files.get_children())
+
     @loading_cursor
     def __on_combobox_selected(self, event):
+        self.__clear_tree()
         project = self.logic.files_creator.load_project(
             folder=self.logic.settings.projects_folder,
             project_name=self.combobox_projects.get()
         )
         self.logger.info('Loading project {:s}'.format(project['name']))
-        m = self.logic.detector.load_module(
-            module_path=project['tests'][1]['path']
+        self.__fill_tree(project=project)
+
+    def __fill_tree(self, project):
+        self.logger.info('Files and tests in project:')
+        self.__add_modules(project=project, root=project['name'])
+
+    def __add_modules(self, project, root):
+        for test in project['tests']:
+            _module = self.logic.detector.load_module(module_path=test['path'])
+            self.logger.info('-{:s}'.format(_module.__name__))
+
+            new_root = '{:s}-{:s}'.format(root, _module.__name__)
+            self.logic.testing_modules_register[new_root] = _module
+            self.tree_files.insert(
+                parent='', index=tk.END, iid=new_root, text=_module.__name__,
+                values=(False, 'Module', ''), tags=(new_root, )
+            )
+
+            self.__add_classes(_module=_module, root=new_root)
+
+    def __add_classes(self, _module, root):
+        _classes = self.logic.detector.get_module_classes(_module=_module)
+        for _class in _classes:
+            if(self.logic.detector.is_test_class(_class=_class)):
+                self.logger.info('--{:s}'.format(_class.__name__))
+
+                new_root = '{:s}-{:s}'.format(root, _class.__name__)
+                self.logic.testing_classes_register[new_root] = _class
+                self.tree_files.insert(
+                    parent=root, index=tk.END, iid=new_root,
+                    text=_class.__name__, values=(False, 'Class', ''),
+                    tags=(new_root, )
+                )
+
+                self.__add_methods(_class=_class, root=new_root)
+
+    def __add_methods(self, _class, root):
+        _methods = self.logic.detector.get_class_methods(_class=_class)
+        for _method in _methods:
+            if(self.logic.detector.is_test_method(_method=_method)):
+                self.logger.info('---{:s}'.format(_method.__name__))
+
+                new_root = '{:s}-{:s}'.format(root, _method.__name__)
+                self.logic.testing_methods_register[new_root] = _method
+                self.tree_files.insert(
+                    parent=root, index=tk.END, iid=new_root,
+                    text=_method.__name__, values=(False, 'Method', ''),
+                    tags=(new_root, )
+                )
+
+    def __prepare_objects_to_test(self, register):
+        objects_to_test = list()
+        for key, obj in register.items():
+            if(self.tree_files.item(key)['values'][0] == 'False'):
+                objects_to_test.append(obj)
+        return objects_to_test
+
+    def __start_testing(self):
+        classes_to_tests = self.__prepare_objects_to_test(
+            register=self.logic.testing_classes_register
         )
-        for attribute in dir(m):
-            pass
+        methods_to_tests = self.__prepare_objects_to_test(
+            register=self.logic.testing_methods_register
+        )
+        modules_to_tests = self.__prepare_objects_to_test(
+            register=self.logic.testing_modules_register
+        )
+        print(modules_to_tests)
+        print(classes_to_tests)
+        print(methods_to_tests)
 
     def hide_frame(self):
         self.__update = False
+        self.__clear_tree()
+        self.logic.clear_testing_logic()
 
     def show_frame(self):
         self.combobox_projects.configure(
@@ -518,6 +667,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         )
         self.__update = True
         self.__listen_to_checkbuttons()
+        self.__listen_to_tree()
 
 
 class PyEasyTesting_Window(tk.Tk):
@@ -527,6 +677,21 @@ class PyEasyTesting_Window(tk.Tk):
         self.logic = logic.Logic()
         logging.config.fileConfig(self.logic.settings._logging)
         self.logger = logging.getLogger('GUI')
+        self.__error_logger = logging.getLogger('ERROR')
+
+        def handle_exception(exc_type, exc_value, exc_traceback):
+            if issubclass(exc_type, KeyboardInterrupt):
+                sys.__excepthook__(exc_type, exc_value, exc_traceback)
+                return
+            self.__error_logger.error('*'*79)
+            self.__error_logger.error(
+                "UNCAUGHT EXCEPTION",
+                exc_info=(exc_type, exc_value, exc_traceback)
+            )
+            self.__error_logger.error('*'*79)
+
+        sys.excepthook = handle_exception
+        self.report_callback_exception = handle_exception
 
         self.__frames = {
             'EMPTY': Empty_Frame(logic=self.logic, logger=self.logger),
