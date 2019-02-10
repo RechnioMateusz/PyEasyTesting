@@ -70,9 +70,6 @@ class Test_Detector():
         else:
             return False
 
-    def reload_class(self, _class, _module):
-        return getattr(_module, _class.__name__)
-
 
 if(__name__ == '__main__'):
     import tests.tempTest2
