@@ -1,18 +1,15 @@
 '''
 TODO:
 
-    * Wywalić co sie da z Frame_Loading do logic.py
+    * try:except tearDown & setUp
+
+    * przekazanie w jakiś sposób do jakiego modułu należy klasa
     * Dodać operacje na progressionbar
     * Dodać możliwość wyświetlenia błędu z danego testu
     * Dodać zapisywanie danych
-    * Przenieść wyniki do innej ramki
-        * przenieść progressbar o ramki z wynikami
-        * po teście by się automatycznie odpalała
-        * można by z niej wrócić do testowania przyciskiem OK albo przez menu
-        * czyściłaby się po każdym teście
+    * RESULTS czyściłaby się po każdym teście
 '''
 
-import threading
 import os
 import sys
 
@@ -670,6 +667,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.master.logic.reload_project_files(
             project_name=self.combobox_projects.get()
         )
+
         classes_to_test = self.__prepare_register_to_test(
             register=self.master.logic.testing_classes_register
         )
@@ -685,6 +683,8 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.master.logic.start_testing(
             test_cases=classes_to_test, multithreading=multithreading
         )
+        self.master.logic.clear_result_logic()
+        self.master.change_frame(frame_name='RESULTS')
 
     def hide_frame(self):
         self.__update = False
@@ -707,9 +707,25 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
         my_widgets.My_Label_Frame_Independent.__init__(
             self, *args, text='RESULTS', **kwargs
         )
+
+        self.tests_count = None
+        self.counter = 0
+
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
         )
+
+    def __listen(self):
+        if(not self.master.logic.is_queue_empty()):
+            test_result = self.master.logic.queue_get()
+            print(test_result)
+            self.counter += 1
+            self.after(ms=20, func=self.__listen)
+        else:
+            if(self.counter < self.tests_count):
+                self.after(ms=20, func=self.__listen)
+            else:
+                self.counter = 0
 
     def _set_parameters(self):
         self.rowconfigure(0, weight=1)
@@ -753,10 +769,12 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
         )
 
     def hide_frame(self):
-        pass
+        self.tests_count = None
+        self.counter = 0
 
     def show_frame(self):
-        pass
+        self.tests_count = self.master.logic.tests_amount
+        self.__listen()
 
 
 class PyEasyTesting_Window(tk.Tk):

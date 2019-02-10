@@ -35,16 +35,16 @@ def __extract_info(test_method):
     }
 
 
-def sniff_info(test_class):
+def sniff_info(test_class, module_name):
     buffer = dict()
-    buffer['setUp_error'] = str()
-    buffer['tearDown_error'] = str()
 
     @wraps(test_class)
     def __test_class_wrapper(*args, **kwargs):
         def __test_modifier(test):
             @wraps(test)
             def __test_wrapper(*args, **kwargs):
+                buffer['module'] = module_name
+                buffer['class'] = test_class.__name__
                 buffer['method'] = test.__name__
                 buffer['doc'] = test.__doc__
                 start = time.time()
@@ -53,21 +53,10 @@ def sniff_info(test_class):
                 buffer['time'] = stop - start
             return __test_wrapper
 
-        def __set_up_modifier(setUp):
-            @wraps(setUp)
-            def __set_up_wrapepr(*args, **kwargs):
-                try:
-                    setUp(*args, **kwargs)
-                except Exception as ex:
-                    buffer['setUp_error'] = str(ex)
-
         def __tear_down_modifier(tearDown):
             @wraps(tearDown)
             def __tear_down_wrapper(*args, **kwargs):
-                try:
-                    tearDown(*args, **kwargs)
-                except Exception as ex:
-                    buffer['tearDown_error'] = str(ex)
+                tearDown(*args, **kwargs)
                 info = __extract_info(test_method=args[0])
                 buffer['result'] = info['result']
                 buffer['error_text'] = info['error']
@@ -85,11 +74,6 @@ def sniff_info(test_class):
                         test_class, attribute_name,
                         __test_modifier(test=attribute)
                     )
-                elif(attribute_name == 'setUp'):
-                    setattr(
-                        test_class, attribute_name,
-                        __set_up_modifier(setUp=attribute)
-                    )
                 elif(attribute_name == 'tearDown'):
                     setattr(
                         test_class, attribute_name,
@@ -102,6 +86,7 @@ def sniff_info(test_class):
 def ignore_tests(test_class, not_ignored_tests):
     @wraps(test_class)
     def __test_class_wrapper(*args, **kwargs):
+        tests_amount_to_do = 0
         attributes = dir(test_class)
         for attribute_name in attributes:
             attribute = getattr(test_class, attribute_name)
@@ -110,7 +95,10 @@ def ignore_tests(test_class, not_ignored_tests):
                     if(attribute_name not in not_ignored_tests):
                         attribute.__unittest_skip__ = True
                     else:
+                        tests_amount_to_do += 1
                         attribute.__unittest_skip__ = False
                     setattr(test_class, attribute_name, attribute)
-        return test_class
-    return __test_class_wrapper()
+        return test_class, tests_amount_to_do
+
+    test_class, tests_amount_to_do = __test_class_wrapper()
+    return test_class, tests_amount_to_do

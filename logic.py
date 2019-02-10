@@ -1,5 +1,6 @@
 import threading
 import unittest
+import copy
 import logging
 import logging.config
 
@@ -41,12 +42,20 @@ class Logic():
             logger=logging.getLogger('TDETECTOR')
         )
 
-        # Initialization of logic attributes
+        # Initialization of logic attributes for loading
         self.loading_directory = None
         self.loading_files_register = dict()
+
+        # Initialization of logic attributes for testing
         self.testing_modules_register = dict()
         self.testing_classes_register = dict()
         self.testing_methods_register = dict()
+
+        # Initialization of logic attributes for results
+        self.tests_amount = 0
+        self.modules_register = dict()
+        self.classes_register = dict()
+        self.methods_register = dict()
 
     # ========== LOADING ==========
     def clear_loading_logic(self):
@@ -59,11 +68,20 @@ class Logic():
         self.testing_classes_register = dict()
         self.testing_modules_register = dict()
 
+    def __get_class_module_name(self, class_name):
+        for key, _module in self.testing_modules_register.items():
+            if(class_name in dir(_module)):
+                return _module.__name__
+
     def modify_test_case(self, _class, _methods):
-        test_case = linker.sniff_info(test_class=_class)
-        test_case = linker.ignore_tests(
+        module_name = self.__get_class_module_name(class_name=_class.__name__)
+        test_case = linker.sniff_info(
+            test_class=_class, module_name=module_name
+        )
+        test_case, tests_amount_to_do = linker.ignore_tests(
             test_class=test_case, not_ignored_tests=_methods
         )
+        self.tests_amount += tests_amount_to_do
         return test_case
 
     def start_testing(self, test_cases, multithreading=False):
@@ -135,3 +153,16 @@ class Logic():
                 _class=_classes[i], _methods=methods_to_test
             )
         return _classes
+
+    # ========== TESTING ==========
+    def clear_result_logic(self):
+        self.tests_amount = 0
+        self.modules_register = dict()
+        self.classes_register = dict()
+        self.methods_register = dict()
+
+    def queue_get(self):
+        return linker.queue_get()
+
+    def is_queue_empty(self):
+        return linker.queue_empty()
