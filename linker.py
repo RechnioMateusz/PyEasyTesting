@@ -1,9 +1,18 @@
 import inspect
 import time
+from unittest import skip
 from functools import wraps
 from queue import Queue
 
 __q = Queue()
+
+
+def queue_get():
+    return __q.get_nowait()
+
+
+def queue_empty():
+    return __q.empty()
 
 
 def __extract_info(test_method):
@@ -26,7 +35,7 @@ def __extract_info(test_method):
     }
 
 
-def info_sniffer(test_class):
+def sniff_info(test_class):
     buffer = dict()
 
     @wraps(test_class)
@@ -40,7 +49,6 @@ def info_sniffer(test_class):
                 test(*args, **kwargs)
                 stop = time.time()
                 buffer['time'] = stop - start
-
             return __test_wrapper
 
         def __tear_down_modifier(tearDown):
@@ -53,7 +61,6 @@ def info_sniffer(test_class):
                 buffer['failure_text'] = info['failure']
                 __q.put(buffer.copy())
                 buffer.clear()
-
             return __tear_down_wrapper
 
         attributes = dir(test_class)
@@ -70,15 +77,22 @@ def info_sniffer(test_class):
                         test_class, attribute_name,
                         __tear_down_modifier(tearDown=attribute)
                     )
-
         return test_class
-
     return __test_class_wrapper()
 
 
-def queue_get():
-    return __q.get_nowait()
-
-
-def queue_empty():
-    return __q.empty()
+def ignore_tests(test_class, not_ignored_tests):
+    @wraps(test_class)
+    def __test_class_wrapper(*args, **kwargs):
+        attributes = dir(test_class)
+        for attribute_name in attributes:
+            attribute = getattr(test_class, attribute_name)
+            if(inspect.ismethod(attribute) or inspect.isfunction(attribute)):
+                if(attribute_name[:4].lower() == 'test'):
+                    if(attribute_name not in not_ignored_tests):
+                        attribute.__unittest_skip__ = True
+                    else:
+                        attribute.__unittest_skip__ = False
+                    setattr(test_class, attribute_name, attribute)
+        return test_class
+    return __test_class_wrapper()

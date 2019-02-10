@@ -2,9 +2,20 @@
 TODO:
 
     * Przy ładowaniu projektu dodać jakąś domieszkę soli do tagów
+    * Wywalić zmiany kolorów do my_widgets.py
+    * Wywalić co sie da z Frame_Loading do logic.py
+    * Dodać wyświetlanie informacji o testach w drzewie
+    * Dodać operacje na progressionbar
+    * Dodać zabezpieczenie na setUp i tearDown w test case'ach
+    * Dodać możliwość wyświetlenia błędu z danego testu
+    * Dodać zapisywanie danych
+    * Całe testy wjebać w try:except???
+    * Przenieść wyniki do innej ramki??????
+        * po teście by się automatycznie odpalała
+        * można by z niej wrócić do testowania przyciskiem OK albo przez menu
+        * czyściłaby się po każdym teście
 '''
 
-import unittest
 import threading
 import os
 import sys
@@ -90,10 +101,12 @@ class Empty_Frame(my_widgets.My_Frame):
         self.logger.info('Creating {:s}...'.format(self.__class__.__name__))
 
     def _set_parameters(self):
-        pass
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
 
     def _create_widgets(self):
-        pass
+        self.label_info = my_widgets.My_Label(master=self, text='Some info')
+        self.label_info.grid(row=0, column=0, sticky=tk.NSEW, padx=10, pady=10)
 
     def hide_frame(self):
         pass
@@ -445,8 +458,8 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
                 )
 
     def __listen_to_tree(self):
-        self.__update_parent(register=self.logic.testing_modules_register)
         self.__update_parent(register=self.logic.testing_classes_register)
+        self.__update_parent(register=self.logic.testing_modules_register)
         if(self.__update):
             self.after(50, self.__listen_to_tree)
 
@@ -594,7 +607,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             _module = self.logic.detector.load_module(module_path=test['path'])
             self.logger.info('-{:s}'.format(_module.__name__))
 
-            new_root = '{:s}-{:s}'.format(root, _module.__name__)
+            new_root = '{:s}/{:s}'.format(root, _module.__name__)
             self.logic.testing_modules_register[new_root] = _module
             self.tree_files.insert(
                 parent='', index=tk.END, iid=new_root, text=_module.__name__,
@@ -609,7 +622,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             if(self.logic.detector.is_test_class(_class=_class)):
                 self.logger.info('--{:s}'.format(_class.__name__))
 
-                new_root = '{:s}-{:s}'.format(root, _class.__name__)
+                new_root = '{:s}/{:s}'.format(root, _class.__name__)
                 self.logic.testing_classes_register[new_root] = _class
                 self.tree_files.insert(
                     parent=root, index=tk.END, iid=new_root,
@@ -625,7 +638,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             if(self.logic.detector.is_test_method(_method=_method)):
                 self.logger.info('---{:s}'.format(_method.__name__))
 
-                new_root = '{:s}-{:s}'.format(root, _method.__name__)
+                new_root = '{:s}/{:s}'.format(root, _method.__name__)
                 self.logic.testing_methods_register[new_root] = _method
                 self.tree_files.insert(
                     parent=root, index=tk.END, iid=new_root,
@@ -633,26 +646,32 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
                     tags=(new_root, )
                 )
 
-    def __prepare_objects_to_test(self, register):
-        objects_to_test = list()
+    def __prepare_register_to_test(self, register):
+        objects_to_test = dict()
         for key, obj in register.items():
             if(self.tree_files.item(key)['values'][0] == 'False'):
-                objects_to_test.append(obj)
+                objects_to_test[key] = obj
         return objects_to_test
 
     def __start_testing(self):
-        classes_to_tests = self.__prepare_objects_to_test(
+        self.logic.reload_project_files(
+            project_name=self.combobox_projects.get()
+        )
+        classes_to_test = self.__prepare_register_to_test(
             register=self.logic.testing_classes_register
         )
-        methods_to_tests = self.__prepare_objects_to_test(
+        classes_to_test = [val for key, val in classes_to_test.items()]
+        methods_to_test = self.__prepare_register_to_test(
             register=self.logic.testing_methods_register
         )
-        modules_to_tests = self.__prepare_objects_to_test(
-            register=self.logic.testing_modules_register
+        classes_to_test = self.logic.prepare_tests(
+            _classes=classes_to_test, _methods=methods_to_test
         )
-        print(modules_to_tests)
-        print(classes_to_tests)
-        print(methods_to_tests)
+
+        multithreading = self.multithreading_var.get()
+        self.logic.start_testing(
+            test_cases=classes_to_test, multithreading=multithreading
+        )
 
     def hide_frame(self):
         self.__update = False
@@ -718,6 +737,8 @@ class PyEasyTesting_Window(tk.Tk):
         self.rowconfigure(1, weight=5)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=5)
+        self.geometry('1000x600')
+        self.minsize(width=500, height=300)
 
     def __create_static_frames(self):
         self.frame_title = Frame_Program_Title(
