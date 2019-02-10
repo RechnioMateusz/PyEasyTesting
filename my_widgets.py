@@ -122,7 +122,7 @@ class My_Button(tk.Button):
 
         self.configure(
             bg='#555555', fg='#FF8000', bd=2,
-            activebackground='#FF8000', activeforeground='#555555',
+            activebackground='#FF9010', activeforeground='#666666',
             disabledforeground='#222222', font=('Consolas', 15, 'bold'),
             highlightcolor='#DDDDDD', highlightthickness=2,
             justify=tk.CENTER, relief=tk.RIDGE, overrelief=tk.GROOVE,
@@ -167,7 +167,7 @@ class My_Checkbutton(tk.Checkbutton):
 
         self.configure(
             bg='#555555', fg='#FF8000', bd=2,
-            activebackground='#FF8000', activeforeground='#555555',
+            activebackground='#FF9010', activeforeground='#666666',
             disabledforeground='#222222', font=('Consolas', 15, 'bold'),
             highlightcolor='#DDDDDD', highlightthickness=2,
             justify=tk.CENTER, relief=tk.SUNKEN, cursor='hand2'
@@ -186,13 +186,13 @@ class My_Checkbutton(tk.Checkbutton):
     def check(self):
         self.configure(
             bg='#FF8000', fg='#555555',
-            activebackground='#555555', activeforeground='#FF8000'
+            activebackground='#666666', activeforeground='#FF9010'
         )
 
     def uncheck(self):
         self.configure(
             bg='#555555', fg='#FF8000',
-            activebackground='#FF8000', activeforeground='#555555'
+            activebackground='#FF9010', activeforeground='#666666'
         )
 
 
@@ -260,7 +260,7 @@ class My_Scrollbar(tk.Scrollbar):
 
         self.configure(
             bg='#555555', bd=2, troughcolor='#FF0000', orient=tk.VERTICAL,
-            activebackground='#FF8000', elementborderwidth=2,
+            activebackground='#FF9010', elementborderwidth=2,
             highlightcolor='#DDDDDD', highlightthickness=2
         )
 
@@ -295,7 +295,7 @@ class My_Separator(ttk.Separator):
             style='Line.TSeparator', background='#FF8000',
             troughcolor='#FF8000'
         )
-        self.configure(orient=tk.HORIZONTAL)
+        self.configure(orient=tk.VERTICAL)
 
         for key, value in kwargs.items():
             if(key != 'master'):

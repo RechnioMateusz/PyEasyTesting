@@ -37,6 +37,8 @@ def __extract_info(test_method):
 
 def sniff_info(test_class):
     buffer = dict()
+    buffer['setUp_error'] = str()
+    buffer['tearDown_error'] = str()
 
     @wraps(test_class)
     def __test_class_wrapper(*args, **kwargs):
@@ -51,10 +53,21 @@ def sniff_info(test_class):
                 buffer['time'] = stop - start
             return __test_wrapper
 
+        def __set_up_modifier(setUp):
+            @wraps(setUp)
+            def __set_up_wrapepr(*args, **kwargs):
+                try:
+                    setUp(*args, **kwargs)
+                except Exception as ex:
+                    buffer['setUp_error'] = str(ex)
+
         def __tear_down_modifier(tearDown):
             @wraps(tearDown)
             def __tear_down_wrapper(*args, **kwargs):
-                tearDown(*args, **kwargs)
+                try:
+                    tearDown(*args, **kwargs)
+                except Exception as ex:
+                    buffer['tearDown_error'] = str(ex)
                 info = __extract_info(test_method=args[0])
                 buffer['result'] = info['result']
                 buffer['error_text'] = info['error']
@@ -71,6 +84,11 @@ def sniff_info(test_class):
                     setattr(
                         test_class, attribute_name,
                         __test_modifier(test=attribute)
+                    )
+                elif(attribute_name == 'setUp'):
+                    setattr(
+                        test_class, attribute_name,
+                        __set_up_modifier(setUp=attribute)
                     )
                 elif(attribute_name == 'tearDown'):
                     setattr(
