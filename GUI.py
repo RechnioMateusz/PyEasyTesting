@@ -1,8 +1,6 @@
 '''
 TODO:
 
-    * Przy ładowaniu projektu dodać jakąś domieszkę soli do tagów
-    * Wywalić zmiany kolorów do my_widgets.py
     * Wywalić co sie da z Frame_Loading do logic.py
     * Dodać wyświetlanie informacji o testach w drzewie
     * Dodać operacje na progressionbar
@@ -209,34 +207,40 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             row=3, column=0, columnspan=3, sticky=tk.NSEW, padx=5, pady=5
         )
         self.info1 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Test found', bg='#005500'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Test found'
         )
+        self.info1.set_positive_scan()
         self.info1.grid(row=0, column=0, sticky=tk.NSEW)
         self.info2 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Test not found', bg='#770022'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Test not found'
         )
+        self.info2.set_negative_scan()
         self.info2.grid(row=0, column=1, sticky=tk.NSEW)
         self.info3 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Is test [by user]', bg='#008800'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Is test [by user]'
         )
+        self.info3.set_positive_user()
         self.info3.grid(row=0, column=2, sticky=tk.NSEW)
         self.info4 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Is not test [by user]', bg='#DD0044'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Is not test [by user]'
         )
+        self.info4.set_negative_user()
         self.info4.grid(row=0, column=3, sticky=tk.NSEW)
         self.info5 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Cannot scan', bg='#0000AA'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Cannot scan'
         )
+        self.info5.set_cannot_scan()
         self.info5.grid(row=0, column=4, sticky=tk.NSEW)
         self.info6 = my_widgets.My_Label(
-            master=self.frame_info, relief=tk.GROOVE, font=('Consolas', 10),
-            text='Not \'Python\' file', bg='#000000'
+            master=self.frame_info, relief=tk.GROOVE,
+            font=('Consolas', 10), text='Not \'Python\' file'
         )
+        self.info6.set_normal_background()
         self.info6.grid(row=0, column=5, sticky=tk.NSEW)
 
     def __update_frame(self):
@@ -307,24 +311,18 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         for key, file_path in self.logic.loading_files_register.items():
             result = self.logic.detector.is_test_file(module_path=file_path)
             if(result is True):
-                self.tree_files.tag_configure(
-                    tagname=key, background='#005500'
-                )
+                self.tree_files.set_bg_positive_scan(key=key)
                 self.tree_files.item(item=key, values=(True, ))
                 tests_counter += 1
             elif(result is False):
-                self.tree_files.tag_configure(
-                    tagname=key, background='#770022'
-                )
+                self.tree_files.set_bg_negative_scan(key=key)
                 self.tree_files.item(item=key, values=(False, ))
                 none_tests_counter += 1
             elif(result is None):
                 self.tree_files.item(item=key, values=('', ))
                 other_counter += 1
             elif(type(result) == str and result == 'FAILED'):
-                self.tree_files.tag_configure(
-                    tagname=key, background='#0000AA'
-                )
+                self.tree_files.set_bg_cannot_scan(key=key)
                 failed_tests_counter += 1
             else:
                 messagebox.showwarning('WARNING', 'Directory scan failed.')
@@ -357,14 +355,10 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             ):
                 is_test = self.tree_files.item(item)['values'][0]
                 if(is_test == 'True'):
-                    self.tree_files.tag_configure(
-                        tagname=item, background='#DD0044'
-                    )
+                    self.tree_files.set_bg_negative_user(key=item)
                     self.tree_files.item(item=item, values=(False, ))
                 elif(is_test == 'False' or is_test == ''):
-                    self.tree_files.tag_configure(
-                        tagname=item, background='#008800'
-                    )
+                    self.tree_files.set_bg_positive_user(key=item)
                     self.tree_files.item(item=item, values=(True, ))
 
     def __get_only_tests(self, parent, register):
@@ -442,17 +436,13 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             ignore, _type, result = self.tree_files.item(item)['values']
             if(counter == len(children)):
                 ignore = True
-                self.tree_files.tag_configure(
-                    tagname=item, foreground='#444444'
-                )
+                self.tree_files.set_fg_ignore(key=item)
                 self.tree_files.item(
                     item=item, values=(ignore, _type, result)
                 )
             else:
                 ignore = False
-                self.tree_files.tag_configure(
-                    tagname=item, foreground='#FF8000'
-                )
+                self.tree_files.set_fg_not_ignore(key=item)
                 self.tree_files.item(
                     item=item, values=(ignore, _type, result)
                 )
@@ -574,10 +564,10 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
     def __ignore_recursively(self, item, ignore):
         _type, result = self.tree_files.item(item)['values'][1:]
         if(ignore is False):
-            self.tree_files.tag_configure(tagname=item, foreground='#FF8000')
+            self.tree_files.set_fg_not_ignore(key=item)
             self.tree_files.item(item=item, values=(ignore, _type, result))
         else:
-            self.tree_files.tag_configure(tagname=item, foreground='#444444')
+            self.tree_files.set_fg_ignore(key=item)
             self.tree_files.item(item=item, values=(ignore, _type, result))
         self.tree_files.item(item=item, values=(ignore, _type, result))
         grand_items = self.tree_files.get_children(item=item)

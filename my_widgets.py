@@ -97,6 +97,24 @@ class My_Label(tk.Label):
             if(key != 'master'):
                 self[key] = value
 
+    def set_positive_scan(self):
+        self.configure(bg='#005500')
+
+    def set_negative_scan(self):
+        self.configure(bg='#770022')
+
+    def set_positive_user(self):
+        self.configure(bg='#008800')
+
+    def set_negative_user(self):
+        self.configure(bg='#DD0044')
+
+    def set_cannot_scan(self):
+        self.configure(bg='#0000AA')
+
+    def set_normal_background(self):
+        self.configure(bg='#000000')
+
 
 class My_Button(tk.Button):
     def __init__(self, *args, **kwargs):
@@ -196,6 +214,27 @@ class My_Treeview(ttk.Treeview):
         for key, value in kwargs.items():
             if(key != 'master'):
                 self[key] = value
+
+    def set_bg_positive_scan(self, key):
+        self.tag_configure(tagname=key, background='#005500')
+
+    def set_bg_negative_scan(self, key):
+        self.tag_configure(tagname=key, background='#770022')
+
+    def set_bg_positive_user(self, key):
+        self.tag_configure(tagname=key, background='#008800')
+
+    def set_bg_negative_user(self, key):
+        self.tag_configure(tagname=key, background='#DD0044')
+
+    def set_bg_cannot_scan(self, key):
+        self.tag_configure(tagname=key, background='#0000AA')
+
+    def set_fg_ignore(self, key):
+        self.tag_configure(tagname=key, foreground='#444444')
+
+    def set_fg_not_ignore(self, key):
+        self.tag_configure(tagname=key, foreground='#FF8000')
 
 
 class My_Progressbar(ttk.Progressbar):
