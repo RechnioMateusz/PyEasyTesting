@@ -236,6 +236,21 @@ class My_Treeview(ttk.Treeview):
     def set_fg_not_ignore(self, key):
         self.tag_configure(tagname=key, foreground='#FF8000')
 
+    def set_positive(self, key):
+        self.tag_configure(
+            tagname=key, background='#00BB77', foreground='#000000'
+        )
+
+    def set_error(self, key):
+        self.tag_configure(
+            tagname=key, background='#BB2222', foreground='#000000'
+        )
+
+    def set_failure(self, key):
+        self.tag_configure(
+            tagname=key, background='#BBBB22', foreground='#000000'
+        )
+
 
 class My_Progressbar(ttk.Progressbar):
     def __init__(self, *args, **kwargs):
