@@ -3,11 +3,10 @@ TODO:
 
     * try:except tearDown & setUp
 
-    * przekazanie w jakiś sposób do jakiego modułu należy klasa
-    * Dodać operacje na progressionbar
     * Dodać możliwość wyświetlenia błędu z danego testu
     * Dodać zapisywanie danych
-    * RESULTS czyściłaby się po każdym teście
+
+    * Frame_Testing ma problemy z przeładowywaniem projektów.
 '''
 
 import os
@@ -74,28 +73,43 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
     def _create_widgets(self):
         self.master.logger.info('Programming buttons...')
         self.button_loading = my_widgets.My_Button(
-            master=self, text='Loading',
-            command=lambda: self.master.change_frame(frame_name='LOADING')
+            master=self, text='Loading', command=self.change_frame_loading
         )
         self.button_loading.grid(
             row=1, column=0, sticky=tk.NSEW, padx=10, pady=10
         )
 
         self.button_testing = my_widgets.My_Button(
-            master=self, text='Testing',
-            command=lambda: self.master.change_frame(frame_name='TESTING')
+            master=self, text='Testing', command=self.change_frame_testing
         )
         self.button_testing.grid(
             row=2, column=0, sticky=tk.NSEW, padx=10, pady=10
         )
 
         self.button_results = my_widgets.My_Button(
-            master=self, text='Results',
-            command=lambda: self.master.change_frame(frame_name='RESULTS')
+            master=self, text='Results', command=self.change_frame_results
         )
         self.button_results.grid(
             row=3, column=0, sticky=tk.NSEW, padx=10, pady=10
         )
+
+    def change_frame_loading(self):
+        self.master.change_frame(frame_name='LOADING')
+        self.button_loading.configure(state=tk.DISABLED)
+        self.button_testing.configure(state=tk.NORMAL)
+        self.button_results.configure(state=tk.NORMAL)
+
+    def change_frame_testing(self):
+        self.master.change_frame(frame_name='TESTING')
+        self.button_loading.configure(state=tk.NORMAL)
+        self.button_testing.configure(state=tk.DISABLED)
+        self.button_results.configure(state=tk.NORMAL)
+
+    def change_frame_results(self):
+        self.master.change_frame(frame_name='RESULTS')
+        self.button_loading.configure(state=tk.NORMAL)
+        self.button_testing.configure(state=tk.NORMAL)
+        self.button_results.configure(state=tk.DISABLED)
 
 
 class Empty_Frame(my_widgets.My_Frame):
@@ -261,10 +275,12 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             self.after(40, self.__update_frame)
 
     def __find_directory(self):
-        self.master.logic.loading_directory = filedialog.askdirectory()
-        if(self.master.logic.loading_directory == ''):
-            self.master.logic.loading_directory = None
-        else:
+        temp_directory = filedialog.askdirectory()
+        if(temp_directory != ''):
+            self.__clear_tree()
+            self.master.logic.clear_loading_logic()
+
+            self.master.logic.loading_directory = temp_directory
             self.label_directory.configure(
                 text='Directory:\n{:s}'.format(
                     self.master.logic.loading_directory
@@ -280,8 +296,6 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
 
     @loading_cursor
     def __start_filling_process(self):
-        self.__clear_tree()
-
         last_folder = self.master.logic.files_creator.get_file_from_path(
             path=self.master.logic.loading_directory
         )
@@ -463,15 +477,43 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
                     item=item, values=(ignore, _type)
                 )
 
-    def __listen_to_tree(self):
+    def __check_items_ignore(self, register):
+        counter = 0
+        for key in register:
+            if(self.tree_files.item(key)['values'][0] == 'True'):
+                counter += 1
+        if(counter == len(register)):
+            return True
+        else:
+            return False
+
+    def __update_start_button(self):
+        if(len(self.tree_files.get_children()) == 0):
+            self.button_start_test.configure(state=tk.DISABLED)
+            return
+
+        modules_ignore = self.__check_items_ignore(
+            register=self.master.logic.testing_modules_register
+        )
+        classes_ignore = self.__check_items_ignore(
+            register=self.master.logic.testing_classes_register
+        )
+        methods_ignore = self.__check_items_ignore(
+            register=self.master.logic.testing_methods_register
+        )
+        if(modules_ignore and classes_ignore and methods_ignore):
+            self.button_start_test.configure(state=tk.DISABLED)
+        else:
+            self.button_start_test.configure(state=tk.NORMAL)
+
+    def __update_tree(self):
+        self.__update_start_button()
         self.__update_parent(
             register=self.master.logic.testing_classes_register
         )
         self.__update_parent(
             register=self.master.logic.testing_modules_register
         )
-        if(self.__update):
-            self.after(50, self.__listen_to_tree)
 
     def _set_parameters(self):
         self.rowconfigure(0, weight=0)
@@ -576,6 +618,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             else:
                 ignore = True
             self.__ignore_recursively(item=item, ignore=ignore)
+            self.__update_tree()
 
     def __ignore_recursively(self, item, ignore):
         _type = self.tree_files.item(item)['values'][1]
@@ -597,12 +640,14 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
     @loading_cursor
     def __on_combobox_selected(self, event):
         self.__clear_tree()
+        self.master.logic.clear_testing_logic()
         project = self.master.logic.files_creator.load_project(
             folder=self.master.logic.settings.projects_folder,
             project_name=self.combobox_projects.get()
         )
         self.master.logger.info('Loading project {:s}'.format(project['name']))
         self.__fill_tree(project=project)
+        self.__update_start_button()
 
     def __fill_tree(self, project):
         self.master.logger.info('Files and tests in project:')
@@ -615,7 +660,9 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             )
             self.master.logger.info('-{:s}'.format(_module.__name__))
 
-            new_root = '{:s}/{:s}'.format(root, _module.__name__)
+            new_root = '{:s}*{:s}*{:s}'.format(
+                root, test['path'], _module.__name__
+            )
             self.master.logic.testing_modules_register[new_root] = _module
             self.tree_files.insert(
                 parent='', index=tk.END, iid=new_root, text=_module.__name__,
@@ -632,7 +679,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             if(self.master.logic.detector.is_test_class(_class=_class)):
                 self.master.logger.info('--{:s}'.format(_class.__name__))
 
-                new_root = '{:s}/{:s}'.format(root, _class.__name__)
+                new_root = '{:s}*{:s}'.format(root, _class.__name__)
                 self.master.logic.testing_classes_register[new_root] = _class
                 self.tree_files.insert(
                     parent=root, index=tk.END, iid=new_root,
@@ -648,7 +695,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             if(self.master.logic.detector.is_test_method(_method=_method)):
                 self.master.logger.info('---{:s}'.format(_method.__name__))
 
-                new_root = '{:s}/{:s}'.format(root, _method.__name__)
+                new_root = '{:s}*{:s}'.format(root, _method.__name__)
                 self.master.logic.testing_methods_register[new_root] = _method
                 self.tree_files.insert(
                     parent=root, index=tk.END, iid=new_root,
@@ -683,8 +730,8 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.master.logic.start_testing(
             test_cases=classes_to_test, multithreading=multithreading
         )
-        self.master.logic.clear_result_logic()
-        self.master.change_frame(frame_name='RESULTS')
+        self.master.logic.copy_modules_and_classes()
+        self.master.frame_main_menu.change_frame_results()
 
     def hide_frame(self):
         self.__update = False
@@ -697,9 +744,10 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
                 projects_folder=self.master.logic.settings.projects_folder
             )
         )
+        self.__update_start_button()
         self.__update = True
         self.__listen_to_checkbuttons()
-        self.__listen_to_tree()
+        self.combobox_projects.set('')
 
 
 class Frame_Results(my_widgets.My_Label_Frame_Independent):
@@ -710,6 +758,7 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
 
         self.tests_count = None
         self.counter = 0
+        self.__partial = None
 
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
@@ -718,7 +767,7 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
     def __listen(self):
         if(not self.master.logic.is_queue_empty()):
             test_result = self.master.logic.queue_get()
-            print(test_result)
+            self.__add_method_result(result_data=test_result)
             self.counter += 1
             self.after(ms=20, func=self.__listen)
         else:
@@ -726,6 +775,9 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
                 self.after(ms=20, func=self.__listen)
             else:
                 self.counter = 0
+                messagebox.showinfo(
+                    title='TESTING RESULTS', message='dodać info o teście'
+                )
 
     def _set_parameters(self):
         self.rowconfigure(0, weight=1)
@@ -763,17 +815,90 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
         self.tree_files.configure(yscrollcommand=self.scrollbar_vert.set)
         self.tree_files.configure(xscrollcommand=self.scrollbar_hor.set)
 
-        self.progressbar = my_widgets.My_Progressbar(master=self)
+        self.progressbar = my_widgets.My_Progressbar(master=self, length=2)
         self.progressbar.grid(
             row=0, column=0, rowspan=2, sticky=tk.NS, padx=2, pady=2
         )
 
+    def __add_modules(self):
+        for key in self.master.logic.modules_keys:
+            name = self.master.logic.get_name_from_key(key=key)
+            self.tree_files.insert(
+                parent='', index=tk.END, iid=key, text=name,
+                values=('Module', ''), tags=(key, )
+            )
+            self.__add_classes(root=key)
+
+    def __add_classes(self, root):
+        for key in self.master.logic.classes_keys:
+            if(root in key):
+                name = self.master.logic.get_name_from_key(key=key)
+                self.tree_files.insert(
+                    parent=root, index=tk.END, iid=key, text=name,
+                    values=('Class', ''), tags=(key, )
+                )
+
+    def __add_method_result(self, result_data):
+        for key in self.master.logic.methods_register:
+            result_key = '{:s}*{:s}*{:s}'.format(
+                result_data['module'], result_data['class'],
+                result_data['method']
+            )
+            if(result_key == key):
+                self.master.logic.methods_register[key] = result_data
+
+                new_root = '{:s}*{:s}'.format(
+                    result_data['module'], result_data['class']
+                )
+                test_result = self.__get_result(
+                    key=key, result=result_data['result'],
+                    error=result_data['error_text'],
+                    failure=result_data['failure_text']
+                )
+                self.tree_files.insert(
+                    parent=new_root, index=tk.END, iid=key,
+                    text=result_data['method'], values=('Method', test_result),
+                    tags=(key, )
+                )
+                self.__change_color_due_result(
+                    key=key, result=result_data['result'],
+                    error=result_data['error_text'],
+                    failure=result_data['failure_text']
+                )
+                self.progressbar.step(amount=1)
+                self.tree_files.update()
+
+    def __get_result(self, key, result, error=None, failure=None):
+        if(result is True):
+            return 'PASS'
+        else:
+            if(error is not None):
+                return 'ERROR'
+            elif(failure is not None):
+                return 'FAILURE'
+
+    def __change_color_due_result(self, key, result, error=None, failure=None):
+        if(result is True):
+            self.tree_files.set_positive(key=key)
+        else:
+            if(error is not None):
+                self.tree_files.set_error(key=key)
+            elif(failure is not None):
+                self.tree_files.set_failure(key=key)
+
+    def __clear_tree(self):
+        self.tree_files.delete(*self.tree_files.get_children())
+
     def hide_frame(self):
         self.tests_count = None
         self.counter = 0
+        self.__clear_tree()
+        self.master.logic.clear_result_logic()
 
     def show_frame(self):
         self.tests_count = self.master.logic.tests_amount
+        self.progressbar.configure(maximum=self.tests_count)
+        self.__add_modules()
         self.__listen()
 
 
@@ -861,56 +986,6 @@ class PyEasyTesting_Window(tk.Tk):
             # Save protocol
             self.quit()
             self.destroy()
-
-
-# class MainWindow(tk.Tk):
-#     def __init__(self, *args, **kwargs):
-#         tk.Tk.__init__(self, *args, **kwargs)
-
-#         self.tests_count = None
-#         self.counter = 0
-
-#         self.__set_parameters()
-#         self.__create_widgets()
-#         self.mainloop()
-
-#     def __listen(self):
-#         if(not linker.queue_empty()):
-#             text = linker.queue_get()
-#             # for key, value in text.items():
-#             #     self.__add_text(new_text=key + ": " + str(value))
-#             # self.__add_text(new_text="="*100)
-#             self.counter += 1
-#             self.after(ms=20, func=self.__listen)
-#         else:
-#             if(self.counter < self.tests_count):
-#                 self.after(ms=20, func=self.__listen)
-#             else:
-#                 self.counter = 0
-
-#     def __set_parameters(self):
-#         self.title('PyEasyTesting')
-#         self.rowconfigure(index=0, weight=1)
-#         self.rowconfigure(index=1, weight=0)
-#         self.columnconfigure(index=0, weight=1)
-
-#     def __create_widgets(self):
-#         pass
-
-#     def start_test(self):
-#         self.text['state'] = tk.NORMAL
-#         self.text.delete(0.0, tk.END)
-#         self.text['state'] = tk.DISABLED
-#         modules = [
-#             # 'tests.tempTest',
-#             'tests.tempTest2',
-#             # 'tests.tempTest3',
-#         ]
-#         # tm = test_manager.TestManager()
-#         # tm.build_tests(modules=modules)
-#         # self.tests_count = tm.tests_count
-#         # tm.start_tests()
-#         # self.__listen()
 
 
 if(__name__ == "__main__"):
