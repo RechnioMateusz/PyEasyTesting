@@ -53,8 +53,8 @@ class Logic():
 
         # Initialization of logic attributes for results
         self.tests_amount = 0
-        self.modules_register = dict()
-        self.classes_register = dict()
+        self.modules_keys = list()
+        self.classes_keys = list()
         self.methods_register = dict()
 
     # ========== LOADING ==========
@@ -71,7 +71,7 @@ class Logic():
     def __get_class_module_name(self, class_name):
         for key, _module in self.testing_modules_register.items():
             if(class_name in dir(_module)):
-                return _module.__name__
+                return key
 
     def modify_test_case(self, _class, _methods):
         module_name = self.__get_class_module_name(class_name=_class.__name__)
@@ -118,7 +118,9 @@ class Logic():
     def __reload_modules(self, project, root):
         for test in project['tests']:
             _module = self.detector.load_module(module_path=test['path'])
-            new_root = '{:s}/{:s}'.format(root, _module.__name__)
+            new_root = '{:s}*{:s}*{:s}'.format(
+                root, test['path'], _module.__name__
+            )
             self.testing_modules_register[new_root] = _module
             self.__reload_classes(_module=_module, root=new_root)
 
@@ -126,7 +128,7 @@ class Logic():
         _classes = self.detector.get_module_classes(_module=_module)
         for _class in _classes:
             if(self.detector.is_test_class(_class=_class)):
-                new_root = '{:s}/{:s}'.format(root, _class.__name__)
+                new_root = '{:s}*{:s}'.format(root, _class.__name__)
                 self.testing_classes_register[new_root] = _class
                 self.__reload_methods(_class=_class, root=new_root)
 
@@ -134,7 +136,7 @@ class Logic():
         _methods = self.detector.get_class_methods(_class=_class)
         for _method in _methods:
             if(self.detector.is_test_method(_method=_method)):
-                new_root = '{:s}/{:s}'.format(root, _method.__name__)
+                new_root = '{:s}*{:s}'.format(root, _method.__name__)
                 self.testing_methods_register[new_root] = _method
 
     def __prepare_methods_to_test(self, _methods, class_name):
@@ -157,9 +159,25 @@ class Logic():
     # ========== TESTING ==========
     def clear_result_logic(self):
         self.tests_amount = 0
-        self.modules_register = dict()
-        self.classes_register = dict()
+        self.modules_keys = list()
+        self.classes_keys = list()
         self.methods_register = dict()
+
+    def copy_modules_and_classes(self):
+        for key in self.testing_modules_register:
+            self.modules_keys.append(key)
+        for key in self.testing_classes_register:
+            self.classes_keys.append(key)
+        for key in self.testing_methods_register:
+            self.methods_register[key] = None
+
+    def get_project_name(self):
+        key_component = self.testing_modules_register[0].split('*')
+        return key_component[0]
+
+    def get_name_from_key(self, key):
+        name = key.split('*')
+        return name[len(name) - 1]
 
     def queue_get(self):
         return linker.queue_get()
