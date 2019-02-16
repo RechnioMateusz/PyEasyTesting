@@ -172,8 +172,9 @@ class Logic():
             self.methods_register[key] = None
 
     def get_project_name(self):
-        key_component = self.testing_modules_register[0].split('*')
-        return key_component[0]
+        for key in self.modules_keys:
+            key_component = key.split('*')
+            return key_component[0]
 
     def get_name_from_key(self, key):
         name = key.split('*')
