@@ -145,7 +145,7 @@ class My_Text(tk.Text):
         tk.Text.__init__(self, *args, **kwargs)
 
         self.configure(
-            bg='#443344', fg='#FF8000', bd=2,
+            bg='#444466', fg='#FF8000', bd=2,
             font=('Consolas', 15), highlightcolor='#DDDDDD',
             highlightthickness=2, wrap=tk.WORD
         )
@@ -159,6 +159,15 @@ class My_Text(tk.Text):
 
     def disable(self):
         self.configure(state=tk.DISABLED)
+
+    def set_bg_error(self):
+        self.configure(bg='#774444')
+
+    def set_bg_failure(self):
+        self.configure(bg='#666644')
+
+    def set_bg_pass(self):
+        self.configure(bg='#446644')
 
 
 class My_Checkbutton(tk.Checkbutton):
