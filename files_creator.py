@@ -19,9 +19,9 @@ class Files_Creator():
                 {
                     'file': test_name,
                     'path': test_path,
+                    'history': list()
                 }
             )
-        project['history'] = list()
         file_name = '{:s}.json'.format(project_name)
         path = os.path.join(self.main_path, folder, file_name)
         with open(path, 'w') as project_file:
