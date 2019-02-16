@@ -3,14 +3,12 @@ TODO:
 
     * try:except tearDown & setUp
 
-    * Dodać możliwość wyświetlenia błędu z danego testu
     * Dodać zapisywanie danych
-
-    * Frame_Testing ma problemy z przeładowywaniem projektów.
 '''
 
 import os
 import sys
+import traceback
 
 import logging
 import logging.config
@@ -18,8 +16,10 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 from tkinter import filedialog
+from tkinter.simpledialog import askstring
 
 import my_widgets
+import my_windows
 import logic
 
 
@@ -402,15 +402,31 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             else:
                 self.__get_only_tests(parent=child, register=register)
 
+    def __ask_project_name(self):
+        result = messagebox.askyesno(
+            'Choose project name',
+            'Do you want to use folder name as project name?'
+        )
+        if(result is False):
+            project_name = askstring('Project name', 'Enter project name')
+            return project_name
+        else:
+            return str()
+
     def __save_project(self):
         last_folder = self.master.logic.files_creator.get_file_from_path(
             path=self.master.logic.loading_directory
         )
         register = dict()
         self.__get_only_tests(parent=last_folder, register=register)
+
+        project_name = self.__ask_project_name()
+        if(len(project_name) == 0):
+            project_name = last_folder
+
         try:
             self.master.logic.files_creator.save_project(
-                project_name=last_folder, tests_paths=register,
+                project_name=project_name, tests_paths=register,
                 folder=self.master.logic.settings.projects_folder
             )
         except Exception as ex:
@@ -422,10 +438,11 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             )
         else:
             m = 'Project succesfully saved as \"{:s}.json\".'.format(
-                    last_folder
+                    project_name
                 )
             self.master.logger.info(m)
             messagebox.showinfo('SUCCESS', m)
+            self.master.change_frame(frame_name='EMPTY')
 
     def hide_frame(self):
         self.__update = False
@@ -647,7 +664,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         )
         self.master.logger.info('Loading project {:s}'.format(project['name']))
         self.__fill_tree(project=project)
-        self.__update_start_button()
+        self.__update_tree()
 
     def __fill_tree(self, project):
         self.master.logger.info('Files and tests in project:')
@@ -760,72 +777,105 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
         self.counter = 0
         self.__partial = None
 
+        # Counters
+        self.__tests_passed = 0
+        self.__tests_errors = 0
+        self.__tests_failures = 0
+
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
         )
 
-    def __listen(self):
+    def __listen_to_test_process(self):
         if(not self.master.logic.is_queue_empty()):
             test_result = self.master.logic.queue_get()
             self.__add_method_result(result_data=test_result)
             self.counter += 1
-            self.after(ms=20, func=self.__listen)
+            self.after(ms=20, func=self.__listen_to_test_process)
         else:
             if(self.counter < self.tests_count):
-                self.after(ms=20, func=self.__listen)
+                self.after(ms=20, func=self.__listen_to_test_process)
             else:
                 self.counter = 0
-                messagebox.showinfo(
-                    title='TESTING RESULTS', message='dodać info o teście'
+                self.__open_items_with_errors(
+                    top_level_parents=self.tree_files.get_children()
                 )
+                self.__sum_up_tests()
+
+    def __sum_up_tests(self):
+        message = 'Testing complete [{:n} tests]\n'.format(self.tests_count)
+        message += 'Tests passed: {:n}\n'.format(self.__tests_passed)
+        message += 'Tests errors: {:n}\n'.format(self.__tests_errors)
+        message += 'Tests failures: {:n}'.format(self.__tests_failures)
+        messagebox.showinfo(title='TESTING RESULTS', message=message)
 
     def _set_parameters(self):
-        self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=0)
+        self.rowconfigure(0, weight=0)
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=0)
         self.columnconfigure(0, weight=0)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=0)
 
     def _create_widgets(self):
+        self.label_project = my_widgets.My_Label(master=self)
+        self.label_project.grid(row=0, column=0, columnspan=3, sticky=tk.NSEW)
+
         self.tree_files = my_widgets.My_Treeview(
             master=self, columns=('Test', 'Type', 'Result', 'ID'),
             selectmode='extended'
         )
-        # self.tree_files.bind('<Double-Button-1>', self.__ignore_handler)
+        self.tree_files.bind('<Double-Button-1>', self.__show_test_result)
         self.tree_files.heading('#0', text='Test', anchor=tk.CENTER)
         self.tree_files.heading('#1', text='Type', anchor=tk.CENTER)
         self.tree_files.heading('#2', text='Result', anchor=tk.CENTER)
         self.tree_files.column('#0', stretch=tk.YES, minwidth=50)
         self.tree_files.column('#1', stretch=tk.YES, minwidth=50)
         self.tree_files.column('#2', stretch=tk.YES, minwidth=50)
-        self.tree_files.grid(row=0, column=1, sticky=tk.NSEW)
+        self.tree_files.grid(row=1, column=1, sticky=tk.NSEW)
 
         self.scrollbar_vert = my_widgets.My_Scrollbar(
             master=self, command=self.tree_files.yview,
             orient=tk.VERTICAL, cursor='sb_v_double_arrow'
         )
-        self.scrollbar_vert.grid(row=0, column=2, sticky=tk.NS, pady=1)
+        self.scrollbar_vert.grid(row=1, column=2, sticky=tk.NS, pady=1)
 
         self.scrollbar_hor = my_widgets.My_Scrollbar(
             master=self, command=self.tree_files.xview,
             orient=tk.HORIZONTAL, cursor='sb_h_double_arrow'
         )
-        self.scrollbar_hor.grid(row=1, column=1, sticky=tk.EW, padx=1)
+        self.scrollbar_hor.grid(row=2, column=1, sticky=tk.EW, padx=1)
 
         self.tree_files.configure(yscrollcommand=self.scrollbar_vert.set)
         self.tree_files.configure(xscrollcommand=self.scrollbar_hor.set)
 
         self.progressbar = my_widgets.My_Progressbar(master=self, length=2)
         self.progressbar.grid(
-            row=0, column=0, rowspan=2, sticky=tk.NS, padx=2, pady=2
+            row=1, column=0, rowspan=2, sticky=tk.NS, padx=2, pady=2
         )
+
+    def __show_test_result(self, event):
+        try:
+            item = self.tree_files.selection()[0]
+            self.tree_files.selection_remove(item)
+        except IndexError as ex:
+            self.master.logger.debug(
+                'Cannot select this item. {:s}'.format(str(ex))
+            )
+        else:
+            try:
+                test_info = self.master.logic.methods_register[item]
+            except KeyError as ex:
+                self.master.logger.info('Cannot choose anything than method')
+            else:
+                my_windows.Test_Info(master=self, method_info=test_info)
 
     def __add_modules(self):
         for key in self.master.logic.modules_keys:
             name = self.master.logic.get_name_from_key(key=key)
             self.tree_files.insert(
                 parent='', index=tk.END, iid=key, text=name,
-                values=('Module', ''), tags=(key, )
+                values=('Module', ''), tags=(key, ), open=True
             )
             self.__add_classes(root=key)
 
@@ -880,11 +930,28 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
     def __change_color_due_result(self, key, result, error=None, failure=None):
         if(result is True):
             self.tree_files.set_positive(key=key)
+            self.__tests_passed += 1
         else:
             if(error is not None):
                 self.tree_files.set_error(key=key)
+                self.__tests_errors += 1
             elif(failure is not None):
                 self.tree_files.set_failure(key=key)
+                self.__tests_failures += 1
+
+    def __open_items_with_errors(self, top_level_parents):
+        for parent in top_level_parents:
+            self.__start_opening(parent=parent)
+
+    def __start_opening(self, parent):
+        children = self.tree_files.get_children(parent)
+        for child in children:
+            result = self.tree_files.item(child)['values'][1]
+            if(result == 'FAILURE' or result == 'ERROR'):
+                self.tree_files.item(parent, open=True)
+                break
+            else:
+                self.__start_opening(parent=child)
 
     def __clear_tree(self):
         self.tree_files.delete(*self.tree_files.get_children())
@@ -898,8 +965,11 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
     def show_frame(self):
         self.tests_count = self.master.logic.tests_amount
         self.progressbar.configure(maximum=self.tests_count)
+        project_name = self.master.logic.get_project_name()
+        project_name = 'Project \'{:s}\' results:'.format(project_name)
+        self.label_project.configure(text=project_name)
         self.__add_modules()
-        self.__listen()
+        self.__listen_to_test_process()
 
 
 class PyEasyTesting_Window(tk.Tk):
@@ -941,6 +1011,12 @@ class PyEasyTesting_Window(tk.Tk):
         )
         self.__error_logger.error('*'*79)
 
+        tb = str()
+        for info in traceback.format_tb(tb=exc_traceback):
+            tb += info
+        title = exc_type.__name__ + ': ' + str(exc_value)
+        messagebox.showerror(title, tb)
+
     def _set_parameters(self):
         self.configure(bg='#222222')
         self.rowconfigure(0, weight=0)
@@ -949,6 +1025,7 @@ class PyEasyTesting_Window(tk.Tk):
         self.columnconfigure(1, weight=5)
         self.geometry('1000x600')
         self.minsize(width=500, height=300)
+        self.title('PyEasyTesting Main Window')
 
     def __create_static_frames(self):
         self.frame_title = Frame_Program_Title()
