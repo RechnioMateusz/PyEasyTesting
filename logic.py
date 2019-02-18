@@ -1,6 +1,7 @@
 import threading
 import unittest
 import copy
+import datetime
 import logging
 import logging.config
 
@@ -52,17 +53,19 @@ class Logic():
         self.testing_methods_register = dict()
 
         # Initialization of logic attributes for results
+        self.date_formatter = '%d/%m/%Y %H:%M:%S.%f'
+        self.date = None
         self.tests_amount = 0
         self.modules_keys = list()
         self.classes_keys = list()
         self.methods_register = dict()
 
-    # ========== LOADING ==========
+# ========== LOADING ==========
     def clear_loading_logic(self):
         self.loading_directory = None
         self.loading_files_register = dict()
 
-    # ========== TESTING ==========
+# ========== TESTING ==========
     def clear_testing_logic(self):
         self.testing_methods_register = dict()
         self.testing_classes_register = dict()
@@ -156,7 +159,11 @@ class Logic():
             )
         return _classes
 
-    # ========== TESTING ==========
+# ========== RESULTS ==========
+    def read_time_and_date(self):
+        self.date = datetime.datetime.now()
+        self.date = self.date.strftime(self.date_formatter)
+
     def clear_result_logic(self):
         self.tests_amount = 0
         self.modules_keys = list()
@@ -185,3 +192,11 @@ class Logic():
 
     def is_queue_empty(self):
         return linker.queue_empty()
+
+    def save_results(self):
+        self.read_time_and_date()
+        self.files_creator.save_results(
+            project_name=self.get_project_name(),
+            register=self.methods_register.copy(),
+            current_date=self.date
+        )
