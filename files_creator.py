@@ -5,7 +5,8 @@ import json
 class Files_Creator():
     def __init__(self, main_path, directories):
         self.main_path = main_path
-        self._create_directories(directories=directories)
+        self.directories = directories
+        self._create_directories()
         self.logger = None
         self.__dirs_creation_info = str()
 
@@ -43,8 +44,8 @@ class Files_Creator():
         last_dir = last_dir.split('\\')[-1]
         return last_dir
 
-    def _create_directories(self, directories):
-        for directory in directories:
+    def _create_directories(self):
+        for directory in self.directories:
             path = os.path.join(self.main_path, directory)
             try:
                 os.mkdir(path)
@@ -58,6 +59,32 @@ class Files_Creator():
         path = os.path.join(self.main_path, projects_folder)
         projects_names = os.listdir(path)
         return projects_names
+
+    def save_results(self, project_name, register, current_date):
+        project_name += '.json'
+        project = self.load_project(
+            folder=self.directories[0], project_name=project_name
+        )
+        records = list()
+        for i in range(len(project['tests'])):
+            for key, method_results in register.items():
+                if(project['tests'][i]['path'] in key):
+                    records.append(method_results)
+            new_record = {current_date: records}
+            project['tests'][i]['history'].append(new_record)
+
+        new_path = os.path.join(self.directories[0], project_name)
+        try:
+            with open(new_path, 'w') as project_file:
+                json.dump(project, project_file)
+        except Exception as ex:
+            self.logger.info(
+                'Cannot remove old project with error: {:s}'.format(str(ex))
+            )
+        else:
+            self.logger.info(
+                'Project \'{:s}\' was succesfully saved'.format(project_name)
+            )
 
     def set_logger(self, logger):
         self.logger = logger
