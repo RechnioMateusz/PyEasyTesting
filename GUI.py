@@ -442,7 +442,6 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
                 )
             self.master.logger.info(m)
             messagebox.showinfo('SUCCESS', m)
-            self.master.change_frame(frame_name='EMPTY')
 
     def hide_frame(self):
         self.__update = False
@@ -743,6 +742,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
             _classes=classes_to_test, _methods=methods_to_test
         )
 
+        self.master.logic.read_time_and_date()
         multithreading = self.multithreading_var.get()
         self.master.logic.start_testing(
             test_cases=classes_to_test, multithreading=multithreading
@@ -800,6 +800,7 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
                 self.__open_items_with_errors(
                     top_level_parents=self.tree_files.get_children()
                 )
+                self.master.logic.save_results()
                 self.__sum_up_tests()
 
     def __sum_up_tests(self):
@@ -992,6 +993,8 @@ class PyEasyTesting_Window(tk.Tk):
 
         self.logger.info('Setting main window parameters...')
         self._set_parameters()
+        self.logger.info('Bindings keys...')
+        self.__bind()
         self.logger.info('Creating static frames...')
         self.__create_static_frames()
         self.logger.info('Adding events...')
@@ -1014,8 +1017,8 @@ class PyEasyTesting_Window(tk.Tk):
         tb = str()
         for info in traceback.format_tb(tb=exc_traceback):
             tb += info
-        title = exc_type.__name__ + ': ' + str(exc_value)
-        messagebox.showerror(title, tb)
+        tb += exc_type.__name__ + ': ' + str(exc_value)
+        messagebox.showerror(exc_type.__name__, tb)
 
     def _set_parameters(self):
         self.configure(bg='#222222')
@@ -1035,6 +1038,9 @@ class PyEasyTesting_Window(tk.Tk):
         self.frame_main_menu.grid(row=1, column=0, sticky=tk.NSEW)
 
         self.__frames['EMPTY'].active = True
+
+    def __bind(self):
+        self.bind('<Escape>', self._on_exit)
 
     def change_frame(self, frame_name):
         for key in self.__frames:
