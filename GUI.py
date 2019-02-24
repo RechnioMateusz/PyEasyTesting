@@ -69,6 +69,7 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
         self.rowconfigure(2, weight=0)
         self.rowconfigure(3, weight=0)
         self.rowconfigure(4, weight=0)
+        self.rowconfigure(5, weight=1)
 
     def _create_widgets(self):
         self.master.logger.info('Programming buttons...')
@@ -98,6 +99,14 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
         )
         self.button_analysis.grid(
             row=4, column=0, sticky=tk.NSEW, padx=10, pady=10
+        )
+
+        self.button_exit = my_widgets.My_Button(
+            master=self, text='EXIT', fg='#FF2222',
+            command=self.master._on_exit
+        )
+        self.button_exit.grid(
+            row=5, column=0, sticky=tk.EW + tk.S, padx=10, pady=10
         )
 
     def change_frame_loading(self):
@@ -132,6 +141,7 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
 class Empty_Frame(my_widgets.My_Frame):
     def __init__(self, *args, **kwargs):
         my_widgets.My_Frame.__init__(self, *args, **kwargs)
+
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
         )
@@ -141,7 +151,18 @@ class Empty_Frame(my_widgets.My_Frame):
         self.columnconfigure(0, weight=1)
 
     def _create_widgets(self):
-        self.label_info = my_widgets.My_Label(master=self, text='Some info')
+        info = """How to use PyEasyTesting program:
+        1. Load your project, scan it for test files and save it as
+           PyEasyTesting json project file. [Loading]
+        2. Choose which tests should be executed and execute them. [Testing]
+        3. Check results of your tests in tree view and double click on them
+           for more information. [Results]
+        4. Analyze results of your tests as time passes. [Analysis]
+        """
+
+        self.label_info = my_widgets.My_Label(
+            master=self, text=info, justify=tk.LEFT
+        )
         self.label_info.grid(row=0, column=0, sticky=tk.NSEW, padx=10, pady=10)
 
     def hide_frame(self):
