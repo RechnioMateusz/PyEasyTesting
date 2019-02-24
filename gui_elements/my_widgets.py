@@ -282,15 +282,26 @@ class My_Progressbar(ttk.Progressbar):
                 self[key] = value
 
 
-class My_Scrollbar(tk.Scrollbar):
+class My_Scrollbar(ttk.Scrollbar):
     def __init__(self, *args, **kwargs):
-        tk.Scrollbar.__init__(self, *args, **kwargs)
+        ttk.Scrollbar.__init__(self, *args, **kwargs)
 
-        self.configure(
-            bg='#555555', bd=2, troughcolor='#FF0000', orient=tk.VERTICAL,
-            activebackground='#FF9010', elementborderwidth=2,
-            highlightcolor='#DDDDDD', highlightthickness=2
-        )
+        style = ttk.Style(master=self)
+        style.theme_use(themename='clam')
+
+        conf = {
+            'gripcount': 5,
+            'background': '#222222',
+            'darkcolor': '#DD8000',
+            'lightcolor': '#FF8000',
+            'troughcolor': '#000000',
+            'bordercolor': '#111111',
+            'arrowcolor': '#FFAA00'
+        }
+
+        style.configure('Vertical.TScrollbar', **conf)
+        style.configure('Horizontal.TScrollbar', **conf)
+        self.configure(orient=tk.VERTICAL)
 
         for key, value in kwargs.items():
             if(key != 'master'):
@@ -306,7 +317,15 @@ class My_Combobox(ttk.Combobox):
         style.configure(
             style='TCombobox', background='#FF8000', foreground='#222222'
         )
-        self.configure(state='readonly')
+        style.map(
+            'TCombobox',
+            fieldbackground=[('readonly', '#222222'), ('disabled', '#222222')]
+        )
+        self.option_add('*TCombobox*Listbox.background', '#FF8000')
+        self.option_add('*TCombobox*Listbox.foreground', '#333333')
+        self.option_add('*TCombobox*Listbox.font', 'Consolas 10 bold')
+        self.option_add('*TCombobox*Listbox.selectBackground', '#222222')
+        self.configure(state='readonly', font=('Consolas', 10, 'bold'))
 
         for key, value in kwargs.items():
             if(key != 'master'):
