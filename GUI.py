@@ -1,15 +1,6 @@
-'''
-TODO:
-
-    * try:except tearDown & setUp
-
-    * Dodać zapisywanie danych
-'''
-
 import os
 import sys
 import traceback
-
 import logging
 import logging.config
 import tkinter as tk
@@ -18,14 +9,22 @@ from tkinter import messagebox
 from tkinter import filedialog
 from tkinter.simpledialog import askstring
 
-import my_widgets
-import my_windows
-import logic
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+import matplotlib.pyplot as plt
+
+import _loader
+from gui_elements import my_widgets
+from gui_elements import my_windows
+from _logic import logic
 
 
 def loading_cursor(method):
     def wrapper(master, *args, **kwargs):
-        master.configure(cursor='wait')
+        if(sys.platform.lower() == 'linux'):
+            master.configure(cursor='watch')
+        else:
+            master.configure(cursor='wait')
         master.update()
         ret = method(master, *args, **kwargs)
         master.configure(cursor='arrow')
@@ -57,7 +56,7 @@ class Frame_Program_Title(my_widgets.My_Frame):
 class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
     def __init__(self, *args, **kwargs):
         my_widgets.My_Label_Frame_Independent.__init__(
-            self, *args, text='Main Menu'
+            self, *args, text='Main Menu', **kwargs
         )
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
@@ -69,6 +68,7 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
         self.rowconfigure(1, weight=0)
         self.rowconfigure(2, weight=0)
         self.rowconfigure(3, weight=0)
+        self.rowconfigure(4, weight=0)
 
     def _create_widgets(self):
         self.master.logger.info('Programming buttons...')
@@ -93,23 +93,40 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
             row=3, column=0, sticky=tk.NSEW, padx=10, pady=10
         )
 
+        self.button_analysis = my_widgets.My_Button(
+            master=self, text='Analysis', command=self.change_frame_analysis
+        )
+        self.button_analysis.grid(
+            row=4, column=0, sticky=tk.NSEW, padx=10, pady=10
+        )
+
     def change_frame_loading(self):
         self.master.change_frame(frame_name='LOADING')
         self.button_loading.configure(state=tk.DISABLED)
         self.button_testing.configure(state=tk.NORMAL)
         self.button_results.configure(state=tk.NORMAL)
+        self.button_analysis.configure(state=tk.NORMAL)
 
     def change_frame_testing(self):
         self.master.change_frame(frame_name='TESTING')
         self.button_loading.configure(state=tk.NORMAL)
         self.button_testing.configure(state=tk.DISABLED)
         self.button_results.configure(state=tk.NORMAL)
+        self.button_analysis.configure(state=tk.NORMAL)
 
     def change_frame_results(self):
         self.master.change_frame(frame_name='RESULTS')
         self.button_loading.configure(state=tk.NORMAL)
         self.button_testing.configure(state=tk.NORMAL)
         self.button_results.configure(state=tk.DISABLED)
+        self.button_analysis.configure(state=tk.NORMAL)
+
+    def change_frame_analysis(self):
+        self.master.change_frame(frame_name='ANALYSIS')
+        self.button_loading.configure(state=tk.NORMAL)
+        self.button_testing.configure(state=tk.NORMAL)
+        self.button_results.configure(state=tk.NORMAL)
+        self.button_analysis.configure(state=tk.DISABLED)
 
 
 class Empty_Frame(my_widgets.My_Frame):
@@ -356,7 +373,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         else:
             m = 'Scan completed.'
             m += '\nFound {:n} proper test files.'.format(tests_counter)
-            m += '\nFound {:n} \"Python\" files without tests.'.format(
+            m += '\nFound {:n} \'Python\' files without tests.'.format(
                 none_tests_counter
             )
             m += '\nFound {:n} files, that failed to load.'.format(
@@ -419,14 +436,18 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         )
         register = dict()
         self.__get_only_tests(parent=last_folder, register=register)
+        elements = self.__fetch_elements(register=register)
 
         project_name = self.__ask_project_name()
-        if(len(project_name) == 0):
+        if(project_name is None):
+            return
+        elif(len(project_name) == 0):
             project_name = last_folder
 
         try:
             self.master.logic.files_creator.save_project(
                 project_name=project_name, tests_paths=register,
+                elements=elements,
                 folder=self.master.logic.settings.projects_folder
             )
         except Exception as ex:
@@ -437,11 +458,46 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
                 )
             )
         else:
-            m = 'Project succesfully saved as \"{:s}.json\".'.format(
+            m = 'Project succesfully saved as \'{:s}.json\'.'.format(
                     project_name
                 )
             self.master.logger.info(m)
             messagebox.showinfo('SUCCESS', m)
+
+    def __fetch_elements(self, register):
+        elements = list()
+        for key in register:
+            _test_module = {
+                'path': register[key]
+            }
+            _module = self.master.logic.detector.load_module(
+                module_path=register[key]
+            )
+            test_cases = self.__fetch_test_cases(_module=_module)
+            _test_module[_module.__name__] = test_cases
+            elements.append(_test_module)
+        return elements
+
+    def __fetch_test_cases(self, _module):
+        _classes = self.master.logic.detector.get_module_classes(
+            _module=_module
+        )
+        _test_cases = dict()
+        for _class in _classes:
+            if(self.master.logic.detector.is_test_class(_class=_class)):
+                _tests = self.__fetch_tests(_class=_class)
+                _test_cases[_class.__name__] = _tests
+        return _test_cases
+
+    def __fetch_tests(self, _class):
+        _methods = self.master.logic.detector.get_class_methods(
+            _class=_class
+        )
+        _tests = list()
+        for _method in _methods:
+            if(self.master.logic.detector.is_test_method(_method=_method)):
+                _tests.append(_method.__name__)
+        return _tests
 
     def hide_frame(self):
         self.__update = False
@@ -658,7 +714,6 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.__clear_tree()
         self.master.logic.clear_testing_logic()
         project = self.master.logic.files_creator.load_project(
-            folder=self.master.logic.settings.projects_folder,
             project_name=self.combobox_projects.get()
         )
         self.master.logger.info('Loading project {:s}'.format(project['name']))
@@ -960,17 +1015,341 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
     def hide_frame(self):
         self.tests_count = None
         self.counter = 0
+        self.__partial = None
+        self.__tests_passed = 0
+        self.__tests_errors = 0
+        self.__tests_failures = 0
         self.__clear_tree()
         self.master.logic.clear_result_logic()
 
     def show_frame(self):
-        self.tests_count = self.master.logic.tests_amount
-        self.progressbar.configure(maximum=self.tests_count)
-        project_name = self.master.logic.get_project_name()
-        project_name = 'Project \'{:s}\' results:'.format(project_name)
-        self.label_project.configure(text=project_name)
-        self.__add_modules()
-        self.__listen_to_test_process()
+        try:
+            self.tests_count = self.master.logic.tests_amount
+            self.progressbar.configure(maximum=self.tests_count)
+            project_name = self.master.logic.get_project_name()
+            project_name = 'Project \'{:s}\' results:'.format(project_name)
+            self.label_project.configure(text=project_name)
+            self.__add_modules()
+            self.__listen_to_test_process()
+        except:
+            self.master.logger.info('Opening results without project...')
+
+
+class Inner_Frame_Plot(my_widgets.My_Frame):
+    def __init__(self, *args, **kwargs):
+        self.fig = None
+        self.ax = None
+        self.create_default_plot()
+
+        my_widgets.My_Frame.__init__(self, *args, **kwargs)
+
+    def _set_parameters(self):
+        pass
+
+    def _create_widgets(self):
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
+        self.canvas.draw()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        self.toolbar = NavigationToolbar2Tk(canvas=self.canvas, window=self)
+        self.toolbar.config(background=my_widgets.toolbar_bg)
+        self.toolbar.update()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+    def create_default_plot(self):
+        self.fig, self.ax = plt.subplots()
+        self.fig.set_facecolor(my_widgets.fig_color)
+        self.ax.set_facecolor(my_widgets.ax_color)
+        a = [i for i in range(-10, 11)]
+        b = [i**3 for i in range(-10, 11)]
+        self.ax.plot(a, b)
+        self.ax.set(xlabel='date', ylabel='results', title='Default plot')
+        self.ax.grid()
+
+    def add_plot(self, plot_info):
+        self.fig, self.ax = plt.subplots()
+        self.fig.set_facecolor(my_widgets.fig_color)
+        self.ax.set_facecolor(my_widgets.ax_color)
+        positives, negatives, dates = list(), list(), list()
+        for date, results in plot_info.items():
+            dates.append(
+                self.master.master.logic.parse_str_to_date(date_str=date)
+            )
+            positives.append(results[0])
+            negatives.append(results[1])
+        self.ax.plot(dates, positives, '.-', label='Positive')
+        self.ax.plot(dates, negatives, '.-', label='Negative')
+        self.ax.legend()
+        self.ax.set(xlabel='date', ylabel='results')
+        self.ax.grid()
+        self.canvas.get_tk_widget().destroy()
+        self.toolbar.destroy()
+        self._create_widgets()
+
+
+class Frame_Analysis(my_widgets.My_Label_Frame_Independent):
+    def __init__(self, *args, **kwargs):
+        my_widgets.My_Label_Frame_Independent.__init__(
+            self, *args, text='ANALYSIS', **kwargs
+        )
+
+        self.project = None
+        self.modules = list()
+        self.test_cases = list()
+        self.tests = list()
+        self.__update = False
+
+        self.master.logger.info(
+            'Creating {:s}...'.format(self.__class__.__name__)
+        )
+
+    def __listen_to_comboboxes(self):
+        sub_comboboxes = (
+            self.combobox_project.get(),
+            self.combobox_module.get(),
+            self.combobox_test_case.get(),
+            self.combobox_test.get(),
+        )
+        if(any(sub_comboboxes)):
+            self.button_generate.enable()
+        else:
+            self.button_generate.disable()
+
+        if(self.__update is True):
+            self.after(20, self.__listen_to_comboboxes)
+
+    def _set_parameters(self):
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=0)
+        self.columnconfigure(1, weight=1)
+
+    def _create_widgets(self):
+        self.frame_navigation = my_widgets.My_Little_Frame(master=self)
+        self.frame_navigation.columnconfigure(0, weight=1)
+        self.frame_navigation.rowconfigure(0, weight=0)
+        self.frame_navigation.rowconfigure(1, weight=0)
+        self.frame_navigation.rowconfigure(2, weight=0)
+        self.frame_navigation.rowconfigure(3, weight=0)
+        self.frame_navigation.rowconfigure(4, weight=0)
+        self.frame_navigation.rowconfigure(5, weight=0)
+        self.frame_navigation.rowconfigure(6, weight=0)
+        self.frame_navigation.rowconfigure(7, weight=0)
+        self.frame_navigation.rowconfigure(8, weight=0)
+        self.frame_navigation.rowconfigure(9, weight=0)
+        self.frame_navigation.grid(row=0, column=0, sticky=tk.NSEW)
+
+        self.label_project = my_widgets.My_Label(
+            master=self.frame_navigation, text='Project'
+        )
+        self.label_project.grid(
+            row=0, column=0, sticky=tk.NSEW, padx=10, pady=(10, 0)
+        )
+
+        self.combobox_project = my_widgets.My_Combobox(
+            master=self.frame_navigation
+        )
+        self.combobox_project.bind('<<ComboboxSelected>>', self.__load_project)
+        self.combobox_project.grid(
+            row=1, column=0, sticky=tk.EW, padx=10, pady=(0, 10)
+        )
+
+        self.label_module = my_widgets.My_Label(
+            master=self.frame_navigation, text='Module'
+        )
+        self.label_module.grid(
+            row=2, column=0, sticky=tk.NSEW, padx=10, pady=(10, 0)
+        )
+
+        self.combobox_module = my_widgets.My_Combobox(
+            master=self.frame_navigation
+        )
+        self.combobox_module.bind('<<ComboboxSelected>>', self.__load_module)
+        self.combobox_module.disable()
+        self.combobox_module.grid(
+            row=3, column=0, sticky=tk.EW, padx=10, pady=(0, 10)
+        )
+
+        self.label_test_case = my_widgets.My_Label(
+            master=self.frame_navigation, text='Test case'
+        )
+        self.label_test_case.grid(
+            row=4, column=0, sticky=tk.NSEW, padx=10, pady=(10, 0)
+        )
+
+        self.combobox_test_case = my_widgets.My_Combobox(
+            master=self.frame_navigation
+        )
+        self.combobox_test_case.bind(
+            '<<ComboboxSelected>>', self.__load_test_case
+        )
+        self.combobox_test_case.disable()
+        self.combobox_test_case.grid(
+            row=5, column=0, sticky=tk.EW, padx=10, pady=(0, 10)
+        )
+
+        self.label_test = my_widgets.My_Label(
+            master=self.frame_navigation, text='Test'
+        )
+        self.label_test.grid(
+            row=6, column=0, sticky=tk.NSEW, padx=10, pady=(10, 0)
+        )
+
+        self.combobox_test = my_widgets.My_Combobox(
+            master=self.frame_navigation
+        )
+        self.combobox_test.disable()
+        self.combobox_test.grid(
+            row=7, column=0, sticky=tk.EW, padx=10, pady=(0, 10)
+        )
+
+        self.separator = my_widgets.My_Separator(master=self.frame_navigation)
+        self.separator.grid(row=8, column=0, sticky=tk.NSEW, pady=20)
+
+        self.button_generate = my_widgets.My_Button(
+            master=self.frame_navigation, text='Generate',
+            command=self.__generate
+        )
+        self.button_generate.grid(
+            row=9, column=0, sticky=tk.NSEW, padx=10, pady=10
+        )
+
+        self.frame_plot = Inner_Frame_Plot(master=self)
+        self.frame_plot.grid(
+            row=0, column=1, sticky=tk.NSEW, padx=(0, 10), pady=10
+        )
+
+    def __load_project(self, event):
+        self.project = self.master.logic.files_creator.load_project(
+            project_name=self.combobox_project.get()
+        )
+        self.modules.clear()
+        self.test_cases.clear()
+        self.combobox_test_case.set('')
+        self.combobox_test_case.configure(values=tuple())
+        self.combobox_test_case.disable()
+        self.tests.clear()
+        self.combobox_test.set('')
+        self.combobox_test.configure(values=tuple())
+        self.combobox_test.disable()
+
+        for element in self.project['elements']:
+            module_name = str()
+            module_path = str()
+            for _module_dict_key, _module_dict_val in element.items():
+                if(_module_dict_key == 'path'):
+                    module_path = _module_dict_val
+                else:
+                    module_name = _module_dict_key
+            module_key = '{:s}*{:s}*{:s}'.format(
+                self.project['name'], module_path, module_name
+            )
+            module_key = module_name + ' '*100 + module_key
+            self.modules.append(module_key)
+
+        self.modules.append('>> ALL <<')
+        self.combobox_module.configure(values=self.modules)
+        self.combobox_module.set('>> ALL <<')
+        self.combobox_module.enable()
+
+    def __load_module(self, event):
+        self.test_cases.clear()
+        self.tests.clear()
+        self.combobox_test.set('')
+        self.combobox_test.configure(values=tuple())
+        self.combobox_test.disable()
+
+        _module_name = self.combobox_module.get().split(' '*100)[0]
+        if(_module_name == '>> ALL <<'):
+            self.test_cases.clear()
+            self.combobox_test_case.configure(values=tuple())
+            self.combobox_test_case.set('')
+            self.combobox_test_case.disable()
+            self.tests.clear()
+            self.combobox_test.configure(values=tuple())
+            self.combobox_test.set('')
+            self.combobox_test.disable()
+            return
+
+        for element in self.project['elements']:
+            for _module_dict_key, _module_dict_val in element.items():
+                if(_module_dict_key == _module_name):
+                    for _test_case in _module_dict_val:
+                        self.test_cases.append(_test_case)
+
+        self.test_cases.append('>> ALL <<')
+        self.combobox_test_case.configure(values=self.test_cases)
+        self.combobox_test_case.set('>> ALL <<')
+        self.combobox_test_case.enable()
+
+    def __load_test_case(self, event):
+        self.tests.clear()
+        _module_name = self.combobox_module.get().split(' '*100)[0]
+        _test_case_name = self.combobox_test_case.get()
+        if(_test_case_name == '>> ALL <<'):
+            self.tests.clear()
+            self.combobox_test.configure(values=tuple())
+            self.combobox_test.set('')
+            self.combobox_test.disable()
+            return
+
+        for element in self.project['elements']:
+            for _module_dict_key, _module_dict_val in element.items():
+                if(_module_dict_key == _module_name):
+                    for _test_name in _module_dict_val[_test_case_name]:
+                        self.tests.append(_test_name)
+
+        self.tests.append('>> ALL <<')
+        self.combobox_test.configure(values=self.tests)
+        self.combobox_test.set('>> ALL <<')
+        self.combobox_test.enable()
+
+    def __generate(self):
+        _module = self.combobox_module.get().split(' '*100)[-1]
+        _test_case = self.combobox_test_case.get()
+        _test = self.combobox_test.get()
+
+        what_to_get = None
+
+        plot_info = dict()
+        for record in self.project['history']:
+            date = record['date']
+            plot_info[date] = [0, 0]
+            for key, result in record['results'].items():
+
+                # Getting needed data to analysis
+                what_to_get = _module == '>> ALL <<'
+                if(_module != '>> ALL <<'):
+                    what_to_get = _module in key
+
+                    if(_test_case == '>> ALL <<'):
+                        what_to_get = what_to_get and _test_case == '>> ALL <<'
+                    else:
+                        what_to_get = what_to_get and \
+                            _test_case == result['class']
+
+                        if(_test == '>> ALL <<'):
+                            what_to_get = what_to_get and _test == '>> ALL <<'
+                        else:
+                            what_to_get = what_to_get and \
+                                _test == result['method']
+
+                if(what_to_get):
+                    if(result['result'] is True):
+                        plot_info[date][0] += 1
+                    else:
+                        plot_info[date][1] += 1
+
+        self.frame_plot.add_plot(plot_info=plot_info)
+
+    def hide_frame(self):
+        self.__update = False
+
+    def show_frame(self):
+        self.combobox_project.configure(
+            values=self.master.logic.files_creator.load_projects_names()
+        )
+        self.__update = True
+        self.__listen_to_comboboxes()
 
 
 class PyEasyTesting_Window(tk.Tk):
@@ -989,6 +1368,7 @@ class PyEasyTesting_Window(tk.Tk):
             'LOADING': Frame_Loading(),
             'TESTING': Frame_Testing(),
             'RESULTS': Frame_Results(),
+            'ANALYSIS': Frame_Analysis(),
         }
 
         self.logger.info('Setting main window parameters...')
@@ -1010,7 +1390,7 @@ class PyEasyTesting_Window(tk.Tk):
             return
         self.__error_logger.error('*'*79)
         self.__error_logger.error(
-            "UNCAUGHT EXCEPTION", exc_info=(exc_type, exc_value, exc_traceback)
+            'UNCAUGHT EXCEPTION', exc_info=(exc_type, exc_value, exc_traceback)
         )
         self.__error_logger.error('*'*79)
 
@@ -1062,7 +1442,7 @@ class PyEasyTesting_Window(tk.Tk):
     def __add_events(self):
         self.protocol('WM_DELETE_WINDOW', self._on_exit)
 
-    def _on_exit(self):
+    def _on_exit(self, event=None):
         result = messagebox.askyesno('EXIT', 'Are You sure?')
         if(result is True):
             self.logger.info('Exiting program...\n\n')
@@ -1071,5 +1451,5 @@ class PyEasyTesting_Window(tk.Tk):
             self.destroy()
 
 
-if(__name__ == "__main__"):
+if(__name__ == '__main__'):
     PyEasyTesting_Window()
