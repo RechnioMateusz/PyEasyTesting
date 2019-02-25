@@ -10,7 +10,7 @@ class Files_Creator():
         self.logger = None
         self.__dirs_creation_info = str()
 
-    def save_project(self, project_name, tests_paths, elements, folder):
+    def save_project(self, project_name, tests_paths, elements):
         project = dict()
         project['name'] = project_name
         project['elements'] = elements
@@ -25,7 +25,9 @@ class Files_Creator():
                 }
             )
         file_name = '{:s}.json'.format(project_name)
-        path = os.path.join(self.main_path, folder, file_name)
+        path = os.path.join(
+            self.main_path, self.directories['projects'], file_name
+        )
         with open(path, 'w') as project_file:
             json.dump(project, project_file)
 
@@ -34,10 +36,14 @@ class Files_Creator():
         )
 
     def load_projects_names(self):
-        return os.listdir(os.path.join(self.main_path, self.directories[0]))
+        return os.listdir(
+            os.path.join(self.main_path, self.directories['projects'])
+        )
 
     def load_project(self, project_name):
-        path = os.path.join(self.main_path, self.directories[0], project_name)
+        path = os.path.join(
+            self.main_path, self.directories['projects'], project_name
+        )
         project = None
         with open(path, 'r') as project_file:
             project = json.load(project_file)
@@ -50,7 +56,7 @@ class Files_Creator():
 
     def _create_directories(self):
         for directory in self.directories:
-            path = os.path.join(self.main_path, directory)
+            path = os.path.join(self.main_path, self.directories[directory])
             try:
                 os.mkdir(path)
             except Exception as ex:
@@ -58,11 +64,6 @@ class Files_Creator():
                     'Cannot create directory {:s} with error: {:s}'.format(
                         path, str(ex)
                     )
-
-    def get_existing_projects(self, projects_folder):
-        path = os.path.join(self.main_path, projects_folder)
-        projects_names = os.listdir(path)
-        return projects_names
 
     def __modify_results(self, results):
         modified_results = dict()
@@ -85,7 +86,7 @@ class Files_Creator():
                 'results': fixed_register,
             }
         )
-        new_path = os.path.join(self.directories[0], project_name)
+        new_path = os.path.join(self.directories['projects'], project_name)
 
         try:
             with open(new_path, 'w') as project_file:
@@ -110,7 +111,7 @@ class Files_Creator():
         )
         directories_str = str()
         for directory in directories:
-            directories_str += '{:s}, '.format(directory)
+            directories_str += '{:s}, '.format(directories[directory])
         directories_str = directories_str[:-2]
         self.logger.info('Creating folders: {:s}'.format(directories_str))
         self.logger.info(self.__dirs_creation_info)
