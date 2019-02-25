@@ -69,15 +69,3 @@ class Test_Detector():
             return True
         else:
             return False
-
-
-if(__name__ == '__main__'):
-    import tests.tempTest2
-    import logging
-
-    t = Test_Detector(logger=logging.getLogger('test'))
-
-    print(t.is_test_class(_class=tests.tempTest2.TestVector))
-    print(
-        t.is_test_method(_method=tests.tempTest2.TestVector.test_dot_product)
-    )
