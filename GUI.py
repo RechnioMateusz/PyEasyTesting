@@ -468,8 +468,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         try:
             self.master.logic.files_creator.save_project(
                 project_name=project_name, tests_paths=register,
-                elements=elements,
-                folder=self.master.logic.settings.projects_folder
+                elements=elements
             )
         except Exception as ex:
             messagebox.showerror(
@@ -833,9 +832,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
 
     def show_frame(self):
         self.combobox_projects.configure(
-            values=self.master.logic.files_creator.get_existing_projects(
-                projects_folder=self.master.logic.settings.projects_folder
-            )
+            values=self.master.logic.files_creator.load_projects_names()
         )
         self.__update_start_button()
         self.__update = True
