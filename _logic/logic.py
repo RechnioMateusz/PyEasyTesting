@@ -17,10 +17,10 @@ class Logic():
         self.settings = settings_agent.Settings()
         self.files_creator = files_creator.Files_Creator(
             main_path=self.settings.main_path,
-            directories=(
-                self.settings.projects_folder,
-                self.settings.logs_folder,
-            )
+            directories={
+                'projects': self.settings.projects_folder,
+                'logs': self.settings.logs_folder,
+            }
         )
 
         # Setting logging data
@@ -31,10 +31,10 @@ class Logic():
         self.files_creator.set_logger(logger=logging.getLogger('FCREATOR'))
         self.settings.log_initialization_info()
         self.files_creator.log_initialization_info(
-            directories=(
-                self.settings.projects_folder,
-                self.settings.logs_folder,
-            )
+            directories={
+                'projects': self.settings.projects_folder,
+                'logs': self.settings.logs_folder,
+            }
         )
         self.logger.info('Initialization of logic class')
 
