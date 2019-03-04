@@ -32,9 +32,9 @@ def loading_cursor(method):
     return wrapper
 
 
-class Frame_Program_Title(my_widgets.My_Frame):
+class Frame_Program_Title(my_widgets.My_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Frame.__init__(self, *args, **kwargs)
+        my_widgets.My_Frame_Main.__init__(self, *args, **kwargs)
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
         )
@@ -53,9 +53,9 @@ class Frame_Program_Title(my_widgets.My_Frame):
         )
 
 
-class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
+class Frame_Main_Menu(my_widgets.My_Label_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Label_Frame_Independent.__init__(
+        my_widgets.My_Label_Frame_Main.__init__(
             self, *args, text='Main Menu', **kwargs
         )
         self.master.logger.info(
@@ -138,9 +138,9 @@ class Frame_Main_Menu(my_widgets.My_Label_Frame_Independent):
         self.button_analysis.configure(state=tk.DISABLED)
 
 
-class Empty_Frame(my_widgets.My_Frame):
+class Empty_Frame(my_widgets.My_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Frame.__init__(self, *args, **kwargs)
+        my_widgets.My_Frame_Main.__init__(self, *args, **kwargs)
 
         self.master.logger.info(
             'Creating {:s}...'.format(self.__class__.__name__)
@@ -172,9 +172,9 @@ class Empty_Frame(my_widgets.My_Frame):
         pass
 
 
-class Frame_Loading(my_widgets.My_Label_Frame_Independent):
+class Frame_Loading(my_widgets.My_Label_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Label_Frame_Independent.__init__(
+        my_widgets.My_Label_Frame_Main.__init__(
             self, *args, text='LOADING'
         )
         self.master.logger.info(
@@ -220,7 +220,7 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
             row=1, column=0, columnspan=3, sticky=tk.NSEW, padx=10, pady=5
         )
 
-        self.tree_frame = my_widgets.My_Little_Frame(master=self)
+        self.tree_frame = my_widgets.My_Frame(master=self)
         self.tree_frame.rowconfigure(0, weight=1)
         self.tree_frame.rowconfigure(1, weight=0)
         self.tree_frame.columnconfigure(0, weight=1)
@@ -529,9 +529,9 @@ class Frame_Loading(my_widgets.My_Label_Frame_Independent):
         self.__update_frame()
 
 
-class Frame_Testing(my_widgets.My_Label_Frame_Independent):
+class Frame_Testing(my_widgets.My_Label_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Label_Frame_Independent.__init__(
+        my_widgets.My_Label_Frame_Main.__init__(
             self, *args, text='TESTING', **kwargs
         )
         self.__update = False
@@ -613,7 +613,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.columnconfigure(0, weight=1)
 
     def _create_widgets(self):
-        self.tree_frame = my_widgets.My_Little_Frame(master=self)
+        self.tree_frame = my_widgets.My_Frame(master=self)
         self.tree_frame.rowconfigure(0, weight=1)
         self.tree_frame.rowconfigure(1, weight=0)
         self.tree_frame.columnconfigure(0, weight=1)
@@ -649,7 +649,7 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.tree_files.configure(yscrollcommand=self.scrollbar_vert.set)
         self.tree_files.configure(xscrollcommand=self.scrollbar_hor.set)
 
-        self.buttons_frame = my_widgets.My_Little_Frame(master=self)
+        self.buttons_frame = my_widgets.My_Frame(master=self)
         self.buttons_frame.rowconfigure(0, weight=1)
         self.buttons_frame.columnconfigure(0, weight=0)
         self.buttons_frame.columnconfigure(1, weight=0)
@@ -840,9 +840,9 @@ class Frame_Testing(my_widgets.My_Label_Frame_Independent):
         self.combobox_projects.set('')
 
 
-class Frame_Results(my_widgets.My_Label_Frame_Independent):
+class Frame_Results(my_widgets.My_Label_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Label_Frame_Independent.__init__(
+        my_widgets.My_Label_Frame_Main.__init__(
             self, *args, text='RESULTS', **kwargs
         )
 
@@ -1053,13 +1053,13 @@ class Frame_Results(my_widgets.My_Label_Frame_Independent):
             self.master.logger.info('Opening results without project...')
 
 
-class Inner_Frame_Plot(my_widgets.My_Frame):
+class Inner_Frame_Plot(my_widgets.My_Frame_Main):
     def __init__(self, *args, **kwargs):
         self.fig = None
         self.ax = None
         self.create_default_plot()
 
-        my_widgets.My_Frame.__init__(self, *args, **kwargs)
+        my_widgets.My_Frame_Main.__init__(self, *args, **kwargs)
 
     def _set_parameters(self):
         pass
@@ -1105,9 +1105,9 @@ class Inner_Frame_Plot(my_widgets.My_Frame):
         self._create_widgets()
 
 
-class Frame_Analysis(my_widgets.My_Label_Frame_Independent):
+class Frame_Analysis(my_widgets.My_Label_Frame_Main):
     def __init__(self, *args, **kwargs):
-        my_widgets.My_Label_Frame_Independent.__init__(
+        my_widgets.My_Label_Frame_Main.__init__(
             self, *args, text='ANALYSIS', **kwargs
         )
 
@@ -1142,7 +1142,7 @@ class Frame_Analysis(my_widgets.My_Label_Frame_Independent):
         self.columnconfigure(1, weight=1)
 
     def _create_widgets(self):
-        self.frame_navigation = my_widgets.My_Little_Frame(master=self)
+        self.frame_navigation = my_widgets.My_Frame(master=self)
         self.frame_navigation.columnconfigure(0, weight=1)
         self.frame_navigation.rowconfigure(0, weight=0)
         self.frame_navigation.rowconfigure(1, weight=0)

@@ -6,7 +6,7 @@ ax_color = '#111111'
 toolbar_bg = '#444444'
 
 
-class My_Frame(tk.Frame):
+class My_Frame_Main(tk.Frame):
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
 
@@ -33,7 +33,7 @@ class My_Frame(tk.Frame):
         raise NotImplementedError
 
 
-class My_Little_Frame(tk.Frame):
+class My_Frame(tk.Frame):
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
 
@@ -58,7 +58,7 @@ class My_Label_Frame(tk.LabelFrame):
                 self[key] = value
 
 
-class My_Label_Frame_Independent(tk.LabelFrame):
+class My_Label_Frame_Main(tk.LabelFrame):
     def __init__(self, *args, **kwargs):
         tk.LabelFrame.__init__(self, *args, **kwargs)
 
