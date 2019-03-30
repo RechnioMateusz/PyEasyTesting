@@ -1352,10 +1352,15 @@ class Frame_Analysis(my_widgets.My_Label_Frame_Main):
                                 _test == result['method']
 
                 if(what_to_get):
-                    if(result['result'] is True):
-                        plot_info[date][0] += 1
+                    try:
+                        result['result']
+                    except:
+                        pass
                     else:
-                        plot_info[date][1] += 1
+                        if(result['result'] is True):
+                            plot_info[date][0] += 1
+                        else:
+                            plot_info[date][1] += 1
 
         self.frame_plot.add_plot(plot_info=plot_info)
 

@@ -67,11 +67,12 @@ class Files_Creator():
 
     def __modify_results(self, results):
         modified_results = dict()
-        for key, value in results.items():
-            if(key == 'module'):
-                modified_results[key] = value.split('*')[-1]
-            elif(key not in ("failure_text", "error_text", "doc")):
-                modified_results[key] = value
+        if(results is not None):
+            for key, value in results.items():
+                if(key == 'module'):
+                    modified_results[key] = value.split('*')[-1]
+                elif(key not in ("failure_text", "error_text", "doc")):
+                    modified_results[key] = value
         return modified_results
 
     def save_results(self, project_name, register, current_date):
